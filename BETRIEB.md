@@ -98,6 +98,31 @@ keine Namen/Adresse → script → tts (`voice.mp3` in Storage) → `state=revie
   `voice_url` geleert → per „Freigabe Analyse" neu mit Gemini/Orus vertonen.
 - Betroffene Dateien: `core/tts.py`, `requirements.txt` (+`google-genai`), `.env.example`, `UMSETZUNG.md`.
 
+## Update 2026-07-26 (Titel-Vorparser: Ort/Tat, Cross-Source-Dedup, Halluzinations-Check)
+Neues Modul **`core/parse.py`** zieht schon beim Ingest — **ohne Claude, ohne Volltext**, reine Regex —
+zwei Dinge aus der Schlagzeile, die dort fast immer stehen. Findet er nichts, bleibt das Feld leer und
+der Fall läuft ganz normal weiter (kein Sonderpfad).
+- **Ort + Tat vorgeparst:** `parse_ort()` (Muster `in <Stadt>`, `<Stadt>:`/`<Stadt>.`, `Polizei-News <Stadt>`,
+  `POL-XX: <Stadt>`, `Kreis <X>`, sonst RSS-Region als Fallback) und `parse_tat()` (Sprengung/Raub/
+  Körperverletzung/… — bewusst präziser als `scoring.classify()`). An 15 echten Fällen: Ort 15/15.
+  Neue Spalten `cases.ort` + `cases.tat` (Migration `0002`), Dashboard zeigt Spalten **Ort | Tat**.
+- **Cross-Source-Dedup** (`workers/ingest.py`): erkennt „gleiche Story, anderes Medium" jetzt auch
+  quellen- UND laufübergreifend (Mail-Lauf sieht RSS-Fälle via `supa.recent_cases`). Zwei Stufen:
+  globale Titel-Ähnlichkeit ≥ 0.72 (wie bisher) **plus** Block-Regel `(ort+tat+Kalenderwoche)` mit
+  milderer Schwelle 0.55. **Serien-Schutz:** Titel mit „wieder/erneut/innerhalb N Stunden" gelten als
+  eigener Folgefall und werden NIE weggemergt (Ahlen 4× bleibt Serie). Log-Feld `doppler_gg_bestand`.
+- **Halluzinations-Check** (`workers/extract.py` + `core/parse.py:ort_conflict`): nach der Extraktion wird
+  Claudes `facts.ort` gegen den Titel-`ort` geprüft. Bei echtem Widerspruch → Spalte `cases.warnung`
+  (Migration `0003`), sichtbar als ⚠-Banner im Fall-Detail und ⚠ in der Ort-Spalte. **Konservativ:**
+  flaggt nur, wenn der Titel-Ort präzise ist — Bundesland-Kürzel (`MV`) und `Kreis …` lösen bewusst
+  nicht aus, da gröber als Claudes Stadt-Angabe. Deckt beide Fehlerrichtungen ab (Claude ODER Parser daneben).
+- **Bereits eingelagerte Doppler aufgeräumt:** je 1× MV (Nordkurier) + Fachbach (56Aktuell) auf `verworfen`
+  (schwächerer Score), die stärkeren Partner (SZ.de 50 / Radio Westerwald 45) bleiben.
+- Betroffene Dateien: `core/parse.py` (neu), `core/contracts.py`, `core/supa.py`, `workers/ingest.py`,
+  `workers/extract.py`, `api/templates/partials/cases_table.html`, `api/templates/case_detail.html`,
+  `api/static/style.css`, `supabase/migrations/0002_ort_tat.sql` + `0003_warnung.sql`.
+- **Nach dem Ziehen:** `docker compose up -d --build` (Code läuft in `worker-ingest`/`worker-extract`, Anzeige in `api`).
+
 ## Bekannte Punkte / TODO
 - **B-Roll-Bucket leer** → Render nutzt Farb-Kulissen, bis echte Higgsfield-Clips über die
   `/broll`-Seite hochgeladen sind (gleiche Namen `broll_<kategorie>_NN.mp4`).
@@ -106,7 +131,6 @@ keine Namen/Adresse → script → tts (`voice.mp3` in Storage) → `state=revie
 - **Noch nicht durchgetestet:** Render („Clip bauen"), Publish, VPS-Deploy (`deploy/DEPLOY.md`).
 - **Fotos aus Artikeln:** bewusst NICHT genutzt (Urheberrecht + PII-Risiko) — B-Roll/KI bleibt.
 - Alte themenfremde Fälle (vor dem Filter) wurden auf `verworfen` gesetzt, nicht gelöscht.
-- **Noch nicht durchgetestet:** Render („Clip bauen"), Publish, VPS-Deploy (`deploy/DEPLOY.md`).
 
 ## Diagnose-Schnipsel (PowerShell, mit PATH-Fix)
 ```powershell

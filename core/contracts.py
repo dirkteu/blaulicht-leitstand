@@ -90,7 +90,9 @@ class Facts:
 class Case:
     id: Optional[str] = None
     source: str = Source.RSS.value
-    region: str = ""                    # Stadt/Dienststelle
+    region: str = ""                    # Stadt/Dienststelle (RSS) bzw. leer (Mail)
+    ort: str = ""                       # aus Titel vorgeparst (core.parse), "" = unklar
+    tat: str = ""                       # aus Titel vorgeparst (core.parse), "" = unklar
     title: str = ""
     link: str = ""
     score: int = 0
@@ -103,6 +105,7 @@ class Case:
     video_url: Optional[str] = None
     thumb_url: Optional[str] = None
     error: Optional[str] = None
+    warnung: str = ""                   # Halluzinations-Check: Titel-Ort ≠ Analyse-Ort (core.parse.ort_conflict)
     platform_ids: dict[str, Any] = field(default_factory=dict)
 
 

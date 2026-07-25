@@ -62,7 +62,8 @@
         <th>Quelle</th>
         <th>Zeit</th>
         <th>Score</th>
-        <th>Region</th>
+        <th>Ort</th>
+        <th>Tat</th>
         <th>Titel</th>
         <th>Status</th>
         <th>Aktion</th>
@@ -74,7 +75,8 @@
         <td class="col-source">{{ source_icon(c.source) }}</td>
         <td class="col-time">{{ c.created_at[:16].replace('T', ' ') if c.created_at else '—' }}</td>
         <td class="col-score"><span class="score-chip">{{ c.score }}</span></td>
-        <td class="col-region">{{ c.region or '—' }}</td>
+        <td class="col-region">{{ c.ort or c.region or '—' }}{% if c.warnung %} <span class="warn-flag" title="{{ c.warnung }}">⚠</span>{% endif %}</td>
+        <td class="col-tat">{{ c.tat or '—' }}</td>
         <td class="col-title"><a href="/cases/{{ c.id }}">{{ c.title or '(ohne Titel)' }}</a></td>
         <td class="col-status"><span class="badge badge-{{ c.state }}">{{ c.state | state_label }}</span></td>
         <td class="col-action">
@@ -87,7 +89,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td colspan="7" class="empty-row">Keine Fälle über der Schwelle.</td></tr>
+      <tr><td colspan="8" class="empty-row">Keine Fälle über der Schwelle.</td></tr>
       {% endfor %}
     </tbody>
   </table>

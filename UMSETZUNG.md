@@ -13,6 +13,7 @@ Dateien zu Supabase (Postgres + Storage). Menschliche Freigabe an jeder Schaltst
 blaulicht/
 ├─ core/                     # gemeinsame Logik (aus dem Prototyp)
 │   ├─ scoring.py            # Drama-Score (aus ranking.py)
+│   ├─ parse.py              # Titel-Vorparser: Ort/Tat + Dedup-/Konflikt-Helfer (kein Claude)
 │   ├─ extract.py            # Claude-API-Fakten-Extraktion (+ sanitize)
 │   ├─ script.py             # spec-Bau (aus script_gen.py)
 │   ├─ tts.py                # Gemini TTS (edge-tts als Fallback) + Aussprache-Wörterbuch/say-as
@@ -42,6 +43,15 @@ api [Freigabe Clip]    ─▶ render ─▶ state=fertig
 api [Freigabe Veröff.] ─▶ publish ─▶ state=veroeffentlicht
 ```
 Worker-Regel: Job ziehen → rechnen → `cases`-Zeile updaten → Folge-Job einreihen (außer an Gates).
+
+## Titel-Vorparser (`core/parse.py`, seit 2026-07-26)
+Billige Regex-Stufe **vor** Claude: Ort (Stadt-Ebene) + Tat stehen fast immer schon im Titel.
+- **Ingest** (`workers/ingest.py`): füllt `cases.ort`/`cases.tat`; leer = nichts gefunden, Fall läuft normal weiter.
+- **Dedup:** Block-Schlüssel `(ort+tat+Kalenderwoche)` ergänzt die Titel-Ähnlichkeit und wirkt
+  quellen-/laufübergreifend (via `supa.recent_cases`). Serien-Marker („wieder/erneut") schützen echte Serien.
+- **Halluzinations-Check** (`workers/extract.py`): `parse.ort_conflict()` prüft Claudes `facts.ort` gegen
+  den Titel-Ort → `cases.warnung` (⚠ im Review). Nur bei präzisem Titel-Ort (nicht bei `MV`/`Kreis …`).
+- Migrationen: `0002_ort_tat.sql`, `0003_warnung.sql`.
 
 ## Datenschutz (nicht verhandelbar)
 - `core/extract.py`: Prompt verbietet Namen/Straße/PLZ/Koordinaten; `sanitize(facts)` als letzte Schranke.

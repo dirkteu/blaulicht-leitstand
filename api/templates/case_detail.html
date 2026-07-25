@@ -14,10 +14,15 @@
 
 <section class="panel">
   <h2>Fakten</h2>
+  {% if case.warnung %}
+  <p class="warn-banner" role="alert">⚠ {{ case.warnung }}
+    <span class="muted small">(Titel-Ort beim Ingest: „{{ case.ort or '—' }}“)</span>
+  </p>
+  {% endif %}
   <table class="facts-table">
     <tr><th>Tat</th><td>{{ facts.tat or '—' }}</td></tr>
     <tr><th>Datum / Zeit</th><td>{{ facts.datum or '—' }} {{ facts.zeit or '' }}</td></tr>
-    <tr><th>Ort</th><td>{{ facts.ort or case.region or '—' }}</td></tr>
+    <tr{% if case.warnung %} class="row-warn"{% endif %}><th>Ort</th><td>{{ facts.ort or case.region or '—' }}{% if case.warnung %} ⚠{% endif %}</td></tr>
     <tr><th>Täter (Anzahl)</th><td>{{ facts.taeter_anzahl if facts.taeter_anzahl is not none else '—' }}</td></tr>
     <tr><th>Werkzeug</th><td>{{ facts.werkzeug or '—' }}</td></tr>
     <tr><th>Beute</th><td>{{ (facts.beute_eur ~ ' €') if facts.beute_eur is not none else '—' }}</td></tr>
