@@ -233,6 +233,19 @@ h3 { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; let
 .login-form .btn { margin-top: 0.5rem; }
 .login-hint { color: var(--text-dim); font-size: 0.75rem; margin-top: 1.25rem; }
 
+/* Halluzinations-Check: Ort Titel ≠ Analyse */
+.warn-banner {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warn);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin: 0 0 0.9rem;
+  font-size: 0.9rem;
+}
+.facts-table tr.row-warn td { color: var(--warn); font-weight: 600; }
+.warn-flag { color: var(--warn); cursor: help; }
+
 @media (max-width: 640px) {
   .topbar-inner { flex-wrap: wrap; gap: 0.75rem; }
   .cases-table { display: block; overflow-x: auto; }

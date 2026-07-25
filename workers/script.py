@@ -14,7 +14,7 @@ import os
 from redis import Redis
 from rq import Queue
 
-from core.contracts import Queue as QueueName
+from core.contracts import Queue as QueueName, queue_timeout
 from core.script import build_spec
 from core.supa import get_case, update_case
 
@@ -33,5 +33,6 @@ def script(case_id: str) -> None:
         raise
 
     redis_conn = Redis.from_url(os.environ["REDIS_URL"])
-    queue = Queue(QueueName.TTS.value, connection=redis_conn)
+    queue = Queue(QueueName.TTS.value, connection=redis_conn,
+                  default_timeout=queue_timeout(QueueName.TTS))
     queue.enqueue("workers.tts.tts", case_id)

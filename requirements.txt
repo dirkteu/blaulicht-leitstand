@@ -23,7 +23,8 @@ beautifulsoup4            # Volltext-HTML parsen
 
 # Medien
 pillow                    # Overlays
-edge-tts                  # Voiceover
+google-genai              # Voiceover: Gemini TTS (Standard-Backend)
+edge-tts                  # Voiceover: edge-tts (Fallback, TTS_BACKEND=edge)
 # ffmpeg = Systempaket (siehe Dockerfile)
 
 # Zeitplan

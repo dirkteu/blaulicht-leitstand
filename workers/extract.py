@@ -19,7 +19,8 @@ import os
 from redis import Redis
 from rq import Queue
 
-from core.contracts import Queue as QueueName
+from core import parse
+from core.contracts import Queue as QueueName, queue_timeout
 from core.extract import extract_facts, sanitize
 from core.presseportal import fetch_fulltext  # Team 2 — siehe Docstring
 from core.supa import get_case, update_case
@@ -34,11 +35,18 @@ def extract(case_id: str) -> None:
         fulltext = fetch_fulltext(case["link"])
         facts = extract_facts(fulltext, case["link"])
         facts = sanitize(facts)
-        update_case(case_id, {"facts": facts, "fulltext": fulltext})
+        # Halluzinations-Check: Claudes Ort (aus dem Volltext) gegen den beim
+        # Ingest aus dem Titel geparsten Ort. Bei Widerspruch -> Warnung setzen,
+        # die im Review sichtbar wird. "" (kein Konflikt) leert eine evtl. alte.
+        warnung = parse.ort_conflict(case.get("ort", ""), facts.get("ort", ""))
+        if warnung:
+            print(f"[extract] ⚠ {case_id}: {warnung}")
+        update_case(case_id, {"facts": facts, "fulltext": fulltext, "warnung": warnung})
     except Exception as exc:
         update_case(case_id, {"error": f"extract: {exc}"})
         raise
 
     redis_conn = Redis.from_url(os.environ["REDIS_URL"])
-    queue = Queue(QueueName.SCRIPT.value, connection=redis_conn)
+    queue = Queue(QueueName.SCRIPT.value, connection=redis_conn,
+                  default_timeout=queue_timeout(QueueName.SCRIPT))
     queue.enqueue("workers.script.script", case_id)

@@ -79,6 +79,62 @@ keine Namen/Adresse → script → tts (`voice.mp3` in Storage) → `state=revie
   MP3 (kein Encoder-Delay/Stottern mehr an Szenengrenzen).
 - **Quelle-Symbol** in der Dashboard-Tabelle (RSS orange / Google-„G").
 
+## Update 2026-07-25 (Voice-Engine: edge-tts → Gemini TTS)
+- **Stimme getauscht:** `core/tts.py` vertont standardmäßig über **Google Gemini TTS**
+  (SDK `google-genai`) statt edge-tts. Grund: edge klang monoton; Gemini nimmt eine
+  natürlichsprachige Regie-Anweisung (`TTS_STYLE`) und trifft den düsteren True-Crime-Doku-Ton.
+- **Umschaltbares Backend:** `TTS_BACKEND=gemini|edge` (Default `gemini`); edge-tts bleibt als
+  Fallback. Nur die szenenweise Vertonung ist backend-abhängig — Sync/Timecodes/Concat unverändert
+  (Gemini liefert PCM 24 kHz/mono/16-bit = bestehendes `AR`, slottet direkt in die Concat-Kette).
+- **Neue `.env`-Variablen:** `TTS_BACKEND`, `GOOGLE_API_KEY` (Google AI Studio),
+  `GEMINI_TTS_MODEL=gemini-2.5-flash-preview-tts`, `GEMINI_VOICE=Orus`, `TTS_STYLE` (Regie-Prompt).
+  **Stimme wechseln = nur `GEMINI_VOICE` ändern** (z. B. `Charon`, `Iapetus`, `Algenib`), kein Code.
+- **Gemini-Key-Format:** neue AI-Studio-Keys beginnen mit `AQ.Ab…` (nicht mehr `AIza…`, „Auth-Keys").
+  Funktionieren am nativen Gemini-Endpunkt (den `google-genai` nutzt); alte `AIza`-Keys werden ab
+  Sept. 2026 abgeschaltet.
+- **Rate-Limit:** Gratis-Tier = **3 TTS-Requests/Min**. `_gemini_scene()` respektiert die vom Server
+  gemeldete `retryDelay` (Backoff) → läuft durch, nur langsamer. Für Tempo Billing aktivieren.
+- **Reset dieser Umstellung:** die 3 Fälle in `review` (alte edge-Stimme) auf `state=neu` gesetzt +
+  `voice_url` geleert → per „Freigabe Analyse" neu mit Gemini/Orus vertonen.
+- Betroffene Dateien: `core/tts.py`, `requirements.txt` (+`google-genai`), `.env.example`, `UMSETZUNG.md`.
+
+## Update 2026-07-26 (Titel-Vorparser: Ort/Tat, Cross-Source-Dedup, Halluzinations-Check)
+Neues Modul **`core/parse.py`** zieht schon beim Ingest — **ohne Claude, ohne Volltext**, reine Regex —
+zwei Dinge aus der Schlagzeile, die dort fast immer stehen. Findet er nichts, bleibt das Feld leer und
+der Fall läuft ganz normal weiter (kein Sonderpfad).
+- **Ort + Tat vorgeparst:** `parse_ort()` (Muster `in <Stadt>`, `<Stadt>:`/`<Stadt>.`, `Polizei-News <Stadt>`,
+  `POL-XX: <Stadt>`, `Kreis <X>`, sonst RSS-Region als Fallback) und `parse_tat()` (Sprengung/Raub/
+  Körperverletzung/… — bewusst präziser als `scoring.classify()`). An 15 echten Fällen: Ort 15/15.
+  Neue Spalten `cases.ort` + `cases.tat` (Migration `0002`), Dashboard zeigt Spalten **Ort | Tat**.
+- **Cross-Source-Dedup** (`workers/ingest.py`): erkennt „gleiche Story, anderes Medium" jetzt auch
+  quellen- UND laufübergreifend (Mail-Lauf sieht RSS-Fälle via `supa.recent_cases`). Zwei Stufen:
+  globale Titel-Ähnlichkeit ≥ 0.72 (wie bisher) **plus** Block-Regel `(ort+tat+Kalenderwoche)` mit
+  milderer Schwelle 0.55. **Serien-Schutz:** Titel mit „wieder/erneut/innerhalb N Stunden" gelten als
+  eigener Folgefall und werden NIE weggemergt (Ahlen 4× bleibt Serie). Log-Feld `doppler_gg_bestand`.
+- **Halluzinations-Check** (`workers/extract.py` + `core/parse.py:ort_conflict`): nach der Extraktion wird
+  Claudes `facts.ort` gegen den Titel-`ort` geprüft. Bei echtem Widerspruch → Spalte `cases.warnung`
+  (Migration `0003`), sichtbar als ⚠-Banner im Fall-Detail und ⚠ in der Ort-Spalte. **Konservativ:**
+  flaggt nur, wenn der Titel-Ort präzise ist — Bundesland-Kürzel (`MV`) und `Kreis …` lösen bewusst
+  nicht aus, da gröber als Claudes Stadt-Angabe. Deckt beide Fehlerrichtungen ab (Claude ODER Parser daneben).
+- **Bereits eingelagerte Doppler aufgeräumt:** je 1× MV (Nordkurier) + Fachbach (56Aktuell) auf `verworfen`
+  (schwächerer Score), die stärkeren Partner (SZ.de 50 / Radio Westerwald 45) bleiben.
+- Betroffene Dateien: `core/parse.py` (neu), `core/contracts.py`, `core/supa.py`, `workers/ingest.py`,
+  `workers/extract.py`, `api/templates/partials/cases_table.html`, `api/templates/case_detail.html`,
+  `api/static/style.css`, `supabase/migrations/0002_ort_tat.sql` + `0003_warnung.sql`.
+- **Nach dem Ziehen:** `docker compose up -d --build` (Code läuft in `worker-ingest`/`worker-extract`, Anzeige in `api`).
+
+## Update 2026-07-26 (Job-Timeouts — TTS/Render/Ingest liefen in 180 s-Limit)
+- **Symptom:** Fall hing in `in_analyse` mit `FEHLER: TTS: TASK EXCEEDED MAXIMUM TIMEOUT VALUE (180 SECONDS)`.
+- **Ursache:** RQ-Default-Job-Timeout = 180 s. TTS läuft im Gemini-**Gratis-Tier (3 Req/Min)** mit
+  Backoff; ein Skript mit mehreren Szenen überschreitet 180 s allein durchs Rate-Limit → RQ killt den Job.
+  Dieselbe Falle drohte bei **Render** (ffmpeg) und **Ingest** (~270 Dienststellen, ~3 min).
+- **Fix:** zentrale Timeout-Tabelle `core/contracts.QUEUE_TIMEOUTS` + `queue_timeout()`, als
+  `default_timeout` an jede RQ-Queue gehängt (api-`queue()`, `workers/extract.py`→script,
+  `workers/script.py`→tts, `scheduler/main.py`→ingest). Werte: tts 1200 s, render/ingest 900 s,
+  extract/script/publish 300 s. Behebt das **Abbrechen** — TTS bleibt im Gratis-Tier aber langsam
+  (Minuten); für Tempo Google-**Billing** aktivieren.
+- Hängenden Ahlen-Fall: `error`-Feld geleert (State `in_analyse` belassen → nach Rebuild neu vertonen).
+
 ## Bekannte Punkte / TODO
 - **B-Roll-Bucket leer** → Render nutzt Farb-Kulissen, bis echte Higgsfield-Clips über die
   `/broll`-Seite hochgeladen sind (gleiche Namen `broll_<kategorie>_NN.mp4`).
@@ -87,7 +143,6 @@ keine Namen/Adresse → script → tts (`voice.mp3` in Storage) → `state=revie
 - **Noch nicht durchgetestet:** Render („Clip bauen"), Publish, VPS-Deploy (`deploy/DEPLOY.md`).
 - **Fotos aus Artikeln:** bewusst NICHT genutzt (Urheberrecht + PII-Risiko) — B-Roll/KI bleibt.
 - Alte themenfremde Fälle (vor dem Filter) wurden auf `verworfen` gesetzt, nicht gelöscht.
-- **Noch nicht durchgetestet:** Render („Clip bauen"), Publish, VPS-Deploy (`deploy/DEPLOY.md`).
 
 ## Diagnose-Schnipsel (PowerShell, mit PATH-Fix)
 ```powershell

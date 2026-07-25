@@ -1,49 +1,73 @@
 # -*- coding: utf-8 -*-
 """
-core/tts.py  —  Team 4: Vertonung (edge-tts) + Sync + Aussprache
-==================================================================
+core/tts.py  —  Team 4: Vertonung (Gemini TTS / edge-tts) + Sync + Aussprache
+==============================================================================
 
 PORT aus dem Prototyp `tts.py` (Projektwurzel, Funktion `synth_per_scene`):
 jede Szene einzeln vertonen, die echte Laenge messen, die Timecodes
 (t_start/t_end) + Gesamtdauer in die Spec zurueckschreiben (Sync) und die
 Szenen-Clips zu einer Gesamt-mp3 zusammenfuegen.
 
+STIMME — umschaltbares Backend (ENV `TTS_BACKEND`):
+  - `gemini` (Default): Google Gemini TTS (SDK `google-genai`). Nimmt eine
+    natuerlichsprachige Regie-Anweisung (`TTS_STYLE`) fuer den duesteren
+    True-Crime-Doku-Ton und eine vorgefertigte Stimme (`GEMINI_VOICE`,
+    z. B. `Orus`). Liefert PCM 24 kHz/mono/16-bit — passt exakt in die
+    Concat-Kette unten (die je Szene ohnehin `pcm_s16le` @ AR=24000 baut).
+  - `edge` (Fallback): Microsoft `edge-tts` (Stimme `TTS_VOICE`). Bleibt als
+    Notnagel erhalten, falls die Gemini-API mal klemmt.
+Nur die szenenweise Vertonung (`_synth_scene_raw`) ist backend-abhaengig; die
+Sync-/Timecode-/Concat-Logik in `synth()` ist fuer beide identisch.
+
 NEU gegenueber dem Prototyp:
   - Aussprache-Woerterbuch (aus `core.supa.get_config()["aussprache"]`,
     Wort -> Ersatztext/Lautschrift) wird vor der Synthese angewendet.
-  - "say-as"-Normalisierung fuer Zahlen/Uhrzeiten/Geldbetraege, damit
-    edge-tts sie sauber ausspricht ("20:00" -> "zwanzig Uhr",
-    "12345 €" -> "zwölftausendfünfhundertfünfundvierzig Euro").
+  - "say-as"-Normalisierung fuer Zahlen/Uhrzeiten/Geldbetraege. Fuer edge-tts
+    ist sie zwingend (kein SSML, s. u.); Gemini liest Zahlen auch selbst
+    sauber, dort ist sie nur harmlose Vorverarbeitung.
 
-Hinweis zu SSML (wichtig fuer spaetere Teams, die hier weiterbauen):
-`edge_tts.Communicate()` escaped den kompletten Eingabetext
-(`xml.sax.saxutils.escape`), bevor er ihn in sein eigenes
-`<speak>`-Dokument einbettet (siehe `edge_tts.communicate.mkssml` /
-`Communicate.__init__`). Eigene `<phoneme>`- oder `<say-as>`-Tags im
-uebergebenen Text wuerden also nur als literaler Text
-("&lt;phoneme...&gt;") gesprochen, NICHT als SSML interpretiert.
-Deshalb arbeiten Aussprache-Woerterbuch und Zahlen-Normalisierung hier
-bewusst auf Text-Ebene (Wort-/Muster-Ersetzung VOR der Synthese) statt
-ueber SSML-Tags, die edge-tts ohnehin nicht durchreichen wuerde.
+Hinweis zu SSML (edge-Pfad): `edge_tts.Communicate()` escaped den kompletten
+Eingabetext (`xml.sax.saxutils.escape`), bevor er ihn in sein eigenes
+`<speak>`-Dokument einbettet. Eigene `<phoneme>`-/`<say-as>`-Tags wuerden also
+nur als literaler Text gesprochen, NICHT als SSML interpretiert. Deshalb
+arbeiten Aussprache-Woerterbuch und Zahlen-Normalisierung bewusst auf
+Text-Ebene (Ersetzung VOR der Synthese). Gemini bekommt die Regie ueber den
+`TTS_STYLE`-Prompt statt ueber SSML.
 """
 
 from __future__ import annotations
 
 import os
 import re
+import time
+import wave
 import shutil
 import asyncio
 import tempfile
 import subprocess
 from typing import Any, Optional
 
-# Dependency bereits in requirements.txt vorhanden: edge-tts
+# Dependencies in requirements.txt: google-genai (Gemini), edge-tts (Fallback)
 
-VOICE_DEFAULT = "de-DE-ConradNeural"   # dunkle Doku-Stimme (Fallback, wenn ENV fehlt)
-RATE = os.environ.get("TTS_RATE", "-8%")   # etwas langsamer = mehr Gewicht
+BACKEND = os.environ.get("TTS_BACKEND", "gemini").strip().lower()
+
+VOICE_DEFAULT = "de-DE-ConradNeural"   # edge-Fallback-Stimme (wenn TTS_VOICE fehlt)
+RATE = os.environ.get("TTS_RATE", "-8%")   # etwas langsamer = mehr Gewicht (edge)
 GAP = 0.35            # kurze Atempause nach jeder Szene
 END_BEAT = 0.7         # laengerer Beat vor dem Ende (Cliffhanger)
 AR = "24000"           # einheitliche Audio-Parameter fuer sauberes Concat
+
+# --- Gemini-TTS-Konfiguration (ENV) ---
+GEMINI_TTS_MODEL = os.environ.get("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts")
+GEMINI_VOICE = os.environ.get("GEMINI_VOICE", "Orus")   # feste, bestimmte Stimme
+TTS_STYLE = os.environ.get(
+    "TTS_STYLE",
+    "Sprich als ruhiger, tiefer True-Crime-Doku-Erzähler: langsam, düster, "
+    "mit Spannung — sachlich, nicht reißerisch.",
+)
+GEMINI_SR = 24000      # Gemini liefert PCM mono 16-bit @ 24 kHz (= AR)
+GEMINI_MAX_RETRIES = 5     # Versuche bei 429 (Free-Tier: 3 Req/min)
+GEMINI_RETRY_CAP = 65.0    # max. Wartezeit je Retry in Sekunden
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +95,115 @@ def _edge_scene(text: str, path: str, voice: str, rate: str) -> None:
         await edge_tts.Communicate(text, voice, rate=rate).save(path)
 
     asyncio.run(go())
+
+
+# ---------------------------------------------------------------------------
+# Gemini-TTS-Backend (google-genai): Szene -> WAV (PCM 24 kHz/mono/16-bit)
+# ---------------------------------------------------------------------------
+# Der Client wird lazy und nur einmal gebaut (Modul-Singleton), damit nicht je
+# Szene ein neuer Client + Auth-Setup entsteht.
+_GENAI_CLIENT = None
+
+
+def _gemini_client():
+    global _GENAI_CLIENT
+    if _GENAI_CLIENT is None:
+        from google import genai  # lazy: nur laden, wenn Backend wirklich genutzt wird
+        api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError(
+                "GOOGLE_API_KEY fehlt — fuer TTS_BACKEND=gemini in .env eintragen "
+                "(Key aus Google AI Studio) oder TTS_BACKEND=edge setzen."
+            )
+        _GENAI_CLIENT = genai.Client(api_key=api_key)
+    return _GENAI_CLIENT
+
+
+def _write_wav(path: str, pcm: bytes, rate: int = GEMINI_SR) -> None:
+    """PCM-Rohdaten (mono, 16-bit) als WAV schreiben — bewusst auf AR=24000,
+    damit die Datei ohne Resampling in die Concat-Kette (`apad` -> pcm_s16le)
+    passt."""
+    with wave.open(path, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)          # 16-bit
+        wf.setframerate(rate)
+        wf.writeframes(pcm)
+
+
+_RE_RETRY = re.compile(r"retry(?:Delay|\s+in)['\":\s]+(\d+(?:\.\d+)?)\s*s", re.IGNORECASE)
+
+
+def _retry_delay_seconds(err_msg: str, default: float) -> float:
+    """Vom Server genannte Wartezeit aus einer 429-Fehlermeldung ziehen
+    (`"retryDelay": "46s"` oder `retry in 46.3s`); sonst `default`."""
+    m = _RE_RETRY.search(err_msg)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            pass
+    return default
+
+
+def _gemini_scene(text: str, wav_path: str, voice: str, style: str) -> None:
+    """Eine Szene mit Gemini TTS vertonen und als WAV ablegen.
+
+    Die Regie-Anweisung (`style`) wird dem Sprechtext vorangestellt — Gemini
+    nimmt sie als natuerlichsprachige Direktive (kein SSML). Rueckgabe ist
+    base64-freies PCM in `inline_data.data` (Bytes) laut google-genai-SDK.
+    Auf 429 (Free-Tier-RPM-Limit) wird mit kurzem Backoff neu versucht."""
+    from google.genai import types
+
+    client = _gemini_client()
+    prompt = f"{style}\n\n{text}" if style else text
+    cfg = types.GenerateContentConfig(
+        response_modalities=["AUDIO"],
+        speech_config=types.SpeechConfig(
+            voice_config=types.VoiceConfig(
+                prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name=voice)
+            )
+        ),
+    )
+
+    last_err: Optional[Exception] = None
+    for attempt in range(GEMINI_MAX_RETRIES):
+        try:
+            resp = client.models.generate_content(
+                model=GEMINI_TTS_MODEL, contents=prompt, config=cfg
+            )
+            pcm = resp.candidates[0].content.parts[0].inline_data.data
+            if not pcm:
+                raise RuntimeError("Gemini-TTS-Antwort ohne Audiodaten.")
+            _write_wav(wav_path, pcm)
+            return
+        except Exception as e:  # noqa: BLE001 — Retry nur bei Ratenlimit, sonst durchreichen
+            last_err = e
+            msg = str(e)
+            if "429" not in msg and "RESOURCE_EXHAUSTED" not in msg:
+                raise
+            if attempt == GEMINI_MAX_RETRIES - 1:
+                break
+            # Der Free-Tier limitiert TTS hart (3 Req/min); der Server nennt im
+            # Fehler die noetige Wartezeit ("retryDelay": "46s" / "retry in 46s").
+            # Die respektieren wir, statt blind kurz zu warten.
+            wait = _retry_delay_seconds(msg, default=20.0 * (attempt + 1))
+            time.sleep(min(wait + 1.0, GEMINI_RETRY_CAP))
+    raise RuntimeError(f"Gemini TTS nach Retries fehlgeschlagen: {last_err}")
+
+
+def _synth_scene_raw(text: str, parts_dir: str, i: int,
+                     voice_edge: str) -> str:
+    """Vertont eine Szene mit dem aktiven Backend und gibt den Pfad der
+    erzeugten "raw"-Datei zurueck (WAV bei gemini, MP3 bei edge). Der
+    nachfolgende ffmpeg-`apad`-Schritt in `synth()` ist fuer beide gleich."""
+    if BACKEND == "edge":
+        raw = os.path.join(parts_dir, f"raw_{i:02d}.mp3")
+        _edge_scene(text, raw, voice_edge, RATE)
+        return raw
+    # Default: gemini
+    raw = os.path.join(parts_dir, f"raw_{i:02d}.wav")
+    _gemini_scene(text, raw, GEMINI_VOICE, TTS_STYLE)
+    return raw
 
 
 # ---------------------------------------------------------------------------
@@ -185,10 +318,10 @@ def synth(spec: dict[str, Any],
           aussprache_dict: Optional[dict[str, str]] = None) -> tuple[str, dict[str, Any]]:
     """PORT aus `tts.py:synth_per_scene()`.
 
-    Vertont jede Szene aus `spec['scenes']` einzeln (edge-tts, Stimme aus
-    ENV `TTS_VOICE`), misst die echte Laenge, schreibt `t_start`/`t_end`
-    je Szene + `spec['duration']` zurueck (Sync) und fuegt alle
-    Szenen-Clips zu einer Gesamt-mp3 zusammen.
+    Vertont jede Szene aus `spec['scenes']` einzeln ueber das aktive Backend
+    (`TTS_BACKEND`: gemini | edge, s. Modulkopf), misst die echte Laenge,
+    schreibt `t_start`/`t_end` je Szene + `spec['duration']` zurueck (Sync)
+    und fuegt alle Szenen-Clips zu einer Gesamt-mp3 zusammen.
 
     NEU: wendet vor der Synthese Zahlen/Zeit/Geld-Normalisierung
     (`normalize_say_as`) und das Aussprache-Woerterbuch
@@ -208,8 +341,7 @@ def synth(spec: dict[str, Any],
         (in-place um Timecodes/duration ergaenzt); der Worker schreibt
         sie per `update_case(..., spec=updated_spec)` zurueck.
     """
-    voice = os.environ.get("TTS_VOICE", VOICE_DEFAULT)
-    rate = RATE
+    voice = os.environ.get("TTS_VOICE", VOICE_DEFAULT)   # edge-Fallback-Stimme
 
     scenes = spec.get("scenes") or []
     if not scenes:
@@ -235,8 +367,9 @@ def synth(spec: dict[str, Any],
                       "-i", f"anullsrc=r={AR}:cl=mono", "-ac", "1",
                       "-c:a", "pcm_s16le", part])
             else:
-                raw = os.path.join(parts_dir, f"raw_{i:02d}.mp3")
-                _edge_scene(text, raw, voice, rate)
+                # Backend-Dispatch: erzeugt raw_XX.wav (gemini) bzw. raw_XX.mp3
+                # (edge). Der apad->pcm_s16le-Schritt ist fuer beide identisch.
+                raw = _synth_scene_raw(text, parts_dir, i, voice)
                 _run(["ffmpeg", "-y", "-i", raw, "-af", f"apad=pad_dur={gap}",
                       "-ar", AR, "-ac", "1", "-c:a", "pcm_s16le", part])
 

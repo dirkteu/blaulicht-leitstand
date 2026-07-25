@@ -45,6 +45,7 @@ from core.contracts import (
     Queue as QueueName,
     Source,
     State,
+    queue_timeout,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -72,7 +73,8 @@ def queue(name: QueueName) -> RQQueue:
     eingereiht (z.B. 'workers.extract.extract') — die api importiert die
     Worker-Module NICHT, RQ löst den Funktionsnamen erst beim Ausführen
     im jeweiligen Worker-Container auf."""
-    return RQQueue(name.value, connection=redis_conn())
+    return RQQueue(name.value, connection=redis_conn(),
+                   default_timeout=queue_timeout(name))
 
 
 # ---------------------------------------------------------------------------

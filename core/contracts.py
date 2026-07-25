@@ -90,7 +90,9 @@ class Facts:
 class Case:
     id: Optional[str] = None
     source: str = Source.RSS.value
-    region: str = ""                    # Stadt/Dienststelle
+    region: str = ""                    # Stadt/Dienststelle (RSS) bzw. leer (Mail)
+    ort: str = ""                       # aus Titel vorgeparst (core.parse), "" = unklar
+    tat: str = ""                       # aus Titel vorgeparst (core.parse), "" = unklar
     title: str = ""
     link: str = ""
     score: int = 0
@@ -103,6 +105,7 @@ class Case:
     video_url: Optional[str] = None
     thumb_url: Optional[str] = None
     error: Optional[str] = None
+    warnung: str = ""                   # Halluzinations-Check: Titel-Ort ≠ Analyse-Ort (core.parse.ort_conflict)
     platform_ids: dict[str, Any] = field(default_factory=dict)
 
 
@@ -114,6 +117,33 @@ class Job:
     case_id: str                        # welcher Fall
     queue: str                          # Queue-Wert (z. B. „extract")
     reason: str = "auto"                # „auto" (Verkettung) oder „freigabe:<gate>"
+
+
+# Job-Timeouts je Stufe (Sekunden). Der RQ-Default (180 s) ist fuer mehrere
+# Stufen zu knapp und killt sonst laufende Jobs mitten in der Arbeit:
+#   - TTS: Gemini-Gratis-Limit 3 Requests/Min + Backoff, mehrere Szenen.
+#   - Render: ffmpeg-Compositing.
+#   - Ingest: ~270 Dienststellen sequentiell (~3 min).
+# Wird als default_timeout an die jeweilige RQ-Queue gehaengt (api, workers,
+# scheduler) und beim Enqueue in den Job uebernommen.
+QUEUE_TIMEOUTS: dict[Queue, int] = {
+    Queue.INGEST:  900,
+    Queue.EXTRACT: 300,
+    Queue.SCRIPT:  300,
+    Queue.TTS:     1200,
+    Queue.RENDER:  900,
+    Queue.PUBLISH: 300,
+}
+
+
+def queue_timeout(q: "Queue | str") -> int:
+    """Job-Timeout (Sekunden) fuer eine Queue; grosszuegiger Fallback 600 s."""
+    if isinstance(q, str):
+        try:
+            q = Queue(q)
+        except ValueError:
+            return 600
+    return QUEUE_TIMEOUTS.get(q, 600)
 
 
 # Storage-Buckets (Supabase Storage)

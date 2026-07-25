@@ -1,0 +1,185 @@
+# -*- coding: utf-8 -*-
+"""
+core/parse.py  —  Titel-Vorparser (Team 2: Ingest)
+===================================================
+
+Zieht **ohne** Claude/Volltext zwei Dinge aus der Schlagzeile, die dort fast
+immer schon drinstehen: den **Ort** (Stadt-Ebene) und die **Tat** (grobe
+Kategorie). Reine Regex, kein I/O. Genutzt in workers/ingest.py.
+
+Design-Regel (bewusst): Findet der Parser nichts, gibt er "" zurueck — der Fall
+laeuft dann voellig normal weiter, die spaetere Analyse-Stufe (Claude) fuellt
+die Fakten. Es wird NIE geraten. Ort bleibt auf Stadt-/Kreis-Ebene, damit die
+Datenschutz-Regel (core.contracts.Facts) eingehalten bleibt.
+
+    ort = parse_ort(title, fallback_region=case_region)   # "" wenn unklar
+    tat = parse_tat(title)                                 # "" wenn unklar
+"""
+from __future__ import annotations
+
+import re
+
+# --- Ort ---------------------------------------------------------------------
+
+# Ein Stadtname: Großbuchstabe + Kleinbuchstaben, optional Bindestrich-Teil
+# (Neustadt-Glewe), optional Umlaute.
+_CITY = r"[A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ][a-zäöüß]+)?"
+
+# Groß geschrieben, aber KEIN Ort — verhindert Fehlgriffe im Titel.
+_STOP = {
+    "zeugenaufruf", "sprengung", "diebstahl", "bewaffneter", "versuchte", "versuchter",
+    "unbekannte", "unbekannter", "wieder", "erneut", "nachtragsmeldung",
+    "zigarettenautomat", "zigarettenautomaten", "tabakautomat", "geldautomat", "automat",
+    "krach", "regionalnachrichten", "innerhalb", "mann", "frau", "polizei", "news",
+    "der", "die", "das", "den", "dem", "nacht", "luft", "gesicht", "folge", "höhe",
+    "raub", "tabak", "presseshop", "mit", "guten", "nachrichten", "panorama",
+    "kriminalpolizei", "diebe", "täter", "verdächtige",
+}
+
+# Landes-Kürzel: gültige (grobe) Ortsangabe, aber kein Stadt-Niveau -> geflaggt.
+_BUNDESLAND = {"mv", "nrw", "rlp", "bw", "by", "sh", "he", "ni", "sn", "st", "th", "bb", "hb", "hh", "sl"}
+
+
+def parse_ort(title: str, fallback_region: str = "") -> str:
+    """Ort (Stadt/Kreis) aus dem Titel; "" wenn nichts Verlaessliches gefunden.
+    fallback_region: bei RSS steht hier die Dienststelle (z. B. Köln) — wird nur
+    genutzt, wenn der Titel selbst keinen Ort hergibt."""
+    ort, _ = parse_ort_ex(title, fallback_region)
+    return ort
+
+
+def parse_ort_ex(title: str, fallback_region: str = "") -> tuple[str, str]:
+    """Wie parse_ort, gibt zusaetzlich die getroffene Methode zurueck
+    ('in-muster', 'präfix', 'polizei-news', 'pol-präfix', 'kreis',
+    'bundesland', 'region-fallback', '—'). Nützlich für Diagnose/Flagging."""
+    t = title or ""
+
+    # "Polizei-News <Stadt>,"
+    m = re.search(r"Polizei-News\s+(" + _CITY + r")", t)
+    if m:
+        return m.group(1), "polizei-news"
+
+    # "Kreis <X>"
+    m = re.search(r"(Kreis\s+" + _CITY + r")", t)
+    if m:
+        return m.group(1), "kreis"
+
+    # "POL-XX: <Stadt> -"  (evtl. Nummern-Token wie '260723-1-K' überspringen)
+    m = re.search(r"POL-[A-Z]+:\s*(?:[\dA-Z][\dA-Z-]*\s+)?(" + _CITY + r")\s*-", t)
+    if m and m.group(1).lower() not in _STOP:
+        return m.group(1), "pol-präfix"
+
+    # Präfix "<Stadt>:" oder "<Stadt>." am Zeilenanfang
+    m = re.match(r"(" + _CITY + r")[.:]\s", t)
+    if m and m.group(1).lower() not in _STOP:
+        return m.group(1), "präfix"
+
+    # "in <Stadt>"  (auch Landes-Kürzel wie MV)
+    for mm in re.finditer(r"\bin\s+(" + _CITY + r"|[A-ZÄÖÜ]{2,})\b", t):
+        cand = mm.group(1)
+        if cand.lower() in _STOP:
+            continue
+        if cand.lower() in _BUNDESLAND:
+            return cand, "bundesland"
+        return cand, "in-muster"
+
+    # Fallback: bekannte Region (RSS-Dienststelle)
+    if fallback_region:
+        return fallback_region, "region-fallback"
+
+    return "", "—"
+
+
+# --- Tat ---------------------------------------------------------------------
+
+# Reihenfolge = Priorität. Erste passende Kategorie gewinnt. "" = unklar.
+# Bewusst praeziser als scoring.classify(): "geschlagen" -> Körperverletzung,
+# nicht faelschlich "Sprengung" nur weil das Wort "Automat" im Titel steht.
+_TAT_PATTERNS: list[tuple[str, str]] = [
+    ("Sprengung",       r"gesprengt|sprengung|sprengen|explosion|explodier|in die luft"),
+    ("Raub",            r"überfall|raubüberfall|\braub\b|beraubt|ausgeraubt"),
+    ("Körperverletzung", r"geschlagen|schläge|körperverletz|niedergeschlagen|attackiert|verletzt|ins gesicht"),
+    ("Schusswaffe",     r"schüsse|erschoss|geschossen|schusswaffe|pistole"),
+    ("Einbruch",        r"einbruch|einbrecher|eingebrochen|aufgebrochen"),
+    ("Diebstahl",       r"diebstahl|gestohlen|entwendet|geklaut"),
+    ("Brandstiftung",   r"brand|brandstiftung|feuer gelegt|in flammen"),
+]
+
+
+def parse_tat(title: str) -> str:
+    """Grobe Tat-Kategorie aus dem Titel; "" wenn nichts Eindeutiges passt."""
+    t = (title or "").lower()
+    for label, pattern in _TAT_PATTERNS:
+        if re.search(pattern, t):
+            return label
+    return ""
+
+
+# --- Dedup-Helfer (quellen-uebergreifend, in workers/ingest.py genutzt) -------
+
+# „Serien"-Marker: signalisiert einen EIGENEN Folgefall am selben Ort (z. B.
+# zweite Sprengung binnen 24 h). Solche Faelle duerfen NICHT als Doppler eines
+# anderen Berichts weggemergt werden — sonst geht der Serien-Aufhaenger verloren.
+_SERIAL_RE = re.compile(
+    r"\bwieder\b|\berneut\w*|\bweitere[rs]?\b|\bnächste[rs]?\b|in folge|tatserie|"
+    r"innerhalb\s+(?:von\s+)?\d+\s+(?:stunden|tagen)|zum\s+\w+\s+mal",
+    re.IGNORECASE,
+)
+
+
+def is_serial(title: str) -> bool:
+    """True, wenn der Titel einen Serien-/Folge-Marker traegt (eigener Fall)."""
+    return bool(_SERIAL_RE.search(title or ""))
+
+
+def is_blockable_ort(ort: str) -> bool:
+    """True, wenn `ort` fuer Block-Dedup taugt: nicht leer und kein grobes
+    Bundesland-Kuerzel (bei 'MV' koennten zwei Staedte gemeint sein → zu grob)."""
+    o = (ort or "").strip().lower()
+    return bool(o) and o not in _BUNDESLAND
+
+
+def is_precise_ort(ort: str) -> bool:
+    """True, wenn `ort` eine praezise Stadt/Gemeinde ist (nicht leer, kein
+    Bundesland-Kuerzel, kein 'Kreis …'). Nur solche eignen sich fuer den
+    Halluzinations-Abgleich gegen Claudes Ort — grobe Angaben (MV, Kreis X)
+    duerfen legitim von Claudes Stadt-Angabe abweichen."""
+    o = (ort or "").strip().lower()
+    if not is_blockable_ort(o):
+        return False
+    return not o.startswith(("kreis ", "landkreis "))
+
+
+def _norm_ort(ort: str) -> str:
+    o = (ort or "").strip().lower()
+    o = re.sub(r"^(kreis|landkreis|stadt|gemeinde)\s+", "", o)
+    o = re.sub(r"\s*\(.*?\)\s*", "", o)          # "Ahlen (Westf.)" -> "ahlen"
+    return o.strip()
+
+
+def ort_conflict(title_ort: str, claude_ort: str) -> str:
+    """Vergleicht den beim Ingest aus dem Titel geparsten Ort mit dem Ort, den
+    Claude aus dem Volltext gezogen hat. Gibt eine kurze Warnung zurueck, wenn
+    beide praezise sind, aber NICHT zusammenpassen — sonst "".
+
+    Bewusst konservativ (wenig Fehlalarme): flaggt nur, wenn der Titel-Ort
+    praezise ist (is_precise_ort) und Claude ueberhaupt einen Ort geliefert hat,
+    und weder der eine im anderen steckt (Stadtteil/Zusatz-Toleranz)."""
+    co = (claude_ort or "").strip()
+    if not co or not is_precise_ort(title_ort):
+        return ""
+    a, b = _norm_ort(title_ort), _norm_ort(co)
+    if not a or not b or a == b or a in b or b in a:
+        return ""
+    return f"Ort-Konflikt: Titel „{title_ort.strip()}“ ≠ Analyse „{co}“ — bitte prüfen."
+
+
+def norm_title(title: str) -> str:
+    """Titel fuers Aehnlichkeits-Matching normalisieren: Behoerden-/Medien-Praefixe,
+    Datums-/Aktenzeichen-Tokens und Sonderzeichen raus, damit derselbe Vorfall aus
+    verschiedenen Quellen aehnlich aussieht."""
+    t = (title or "").lower()
+    t = re.sub(r"pol-\w+:|polizei-news|regionalnachrichten|nachtragsmeldung", " ", t)
+    t = re.sub(r"\d{2}\.\d{2}\.\d{2,4}|\d{6}-\d-\w", " ", t)
+    t = re.sub(r"[^a-zäöüß ]", " ", t)
+    return re.sub(r"\s+", " ", t).strip()

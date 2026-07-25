@@ -13,6 +13,7 @@ Es gibt hier bewusst KEINE Lösch-/Überschreib-Helfer für broll.
 from __future__ import annotations
 import os
 import tempfile
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from supabase import create_client, Client
@@ -71,6 +72,18 @@ def list_cases(min_score: int = 0, state: Optional[str] = None, limit: int = 200
     elif not include_verworfen:
         q = q.neq("state", "verworfen")
     return q.execute().data or []
+
+
+def recent_cases(days: int = 10) -> list[dict[str, Any]]:
+    """Lebende Faelle (state != verworfen) der letzten `days` Tage — schlanke
+    Auswahl fuer den quellen-uebergreifenden Ingest-Dedup (workers/ingest.py)."""
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    return (_tbl("cases")
+            .select("id,title,ort,tat,source,created_at,state")
+            .neq("state", "verworfen")
+            .gte("created_at", since)
+            .limit(500)
+            .execute().data or [])
 
 
 # ---------------------------------------------------------------------------
