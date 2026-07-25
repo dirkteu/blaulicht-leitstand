@@ -135,6 +135,16 @@ der Fall läuft ganz normal weiter (kein Sonderpfad).
   (Minuten); für Tempo Google-**Billing** aktivieren.
 - Hängenden Ahlen-Fall: `error`-Feld geleert (State `in_analyse` belassen → nach Rebuild neu vertonen).
 
+## Update 2026-07-26 (Fix: Audio-Wiedergabe brach nach ~6 s ab)
+- **Symptom:** Vertonung im Fall-Detail spielte nur ~5 s, dann Stopp — obwohl die `voice.mp3`
+  vollständig war (verifiziert: 33,4 s / 134 KB in Storage).
+- **Ursache:** `partials/media_panel.html` pollte per HTMX `every 6s` mit `hx-swap="outerHTML"` und
+  ersetzte dabei den kompletten Block **inkl. `<audio>`** → Wiedergabe startete bei jedem Refresh neu
+  und stoppte nach ~6 s (= Poll-Intervall). Reines UI-Verhalten, kein TTS-/Datei-Problem.
+- **Fix:** Auto-Refresh nur noch, solange Medien entstehen (`state in ('in_analyse','in_produktion')`).
+  In `review`/`fertig` kein Polling → stabiles `<audio>`. Nach „Clip bauen" (→ `in_produktion`) pollt es
+  wieder fürs Video und stoppt danach erneut. Verifiziert: Panel ohne `hx-trigger`, Audio-Dauer 33,4 s.
+
 ## Bekannte Punkte / TODO
 - **Gemini-TTS Gratis-Tages-Quota = 10 Requests/Tag** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
   Modell `gemini-2.5-flash(-preview)-tts`). Jede **Szene = 1 Request** → ~10 Szenen/Tag, reicht kaum für

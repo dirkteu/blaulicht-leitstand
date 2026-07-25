@@ -1,8 +1,14 @@
+{# Auto-Refresh NUR waehrend Medien entstehen (tts/render laufen). Sonst wuerde
+   das 6s-Polling das <audio>/<video>-Element mitten in der Wiedergabe ersetzen
+   und den Ton nach ~6s abbrechen. In review/fertig ist das Audio fertig -> kein
+   Polling -> stabile Wiedergabe. #}
 <div id="media-panel"
+     {%- if case.state in ('in_analyse', 'in_produktion') %}
      hx-get="/cases/{{ case.id }}/partials/media"
      hx-trigger="every 6s"
      hx-target="#media-panel"
-     hx-swap="outerHTML">
+     hx-swap="outerHTML"
+     {%- endif %}>
   <div class="media-row">
     <div class="media-block">
       <h3>Vertonung</h3>
