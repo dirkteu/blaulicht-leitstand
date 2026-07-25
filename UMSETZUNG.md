@@ -15,7 +15,7 @@ blaulicht/
 │   ├─ scoring.py            # Drama-Score (aus ranking.py)
 │   ├─ extract.py            # Claude-API-Fakten-Extraktion (+ sanitize)
 │   ├─ script.py             # spec-Bau (aus script_gen.py)
-│   ├─ tts.py                # edge-tts + Aussprache-Wörterbuch/say-as
+│   ├─ tts.py                # Gemini TTS (edge-tts als Fallback) + Aussprache-Wörterbuch/say-as
 │   ├─ render.py             # Pillow-Overlays + ffmpeg-Compositing
 │   ├─ presseportal.py       # RSS/Volltext (fetch_fulltext), Dienststellen
 │   ├─ mail.py               # IMAP + „MELDUNG ÖFFNEN"-Regex

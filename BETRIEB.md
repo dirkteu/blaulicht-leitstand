@@ -79,6 +79,25 @@ keine Namen/Adresse → script → tts (`voice.mp3` in Storage) → `state=revie
   MP3 (kein Encoder-Delay/Stottern mehr an Szenengrenzen).
 - **Quelle-Symbol** in der Dashboard-Tabelle (RSS orange / Google-„G").
 
+## Update 2026-07-25 (Voice-Engine: edge-tts → Gemini TTS)
+- **Stimme getauscht:** `core/tts.py` vertont standardmäßig über **Google Gemini TTS**
+  (SDK `google-genai`) statt edge-tts. Grund: edge klang monoton; Gemini nimmt eine
+  natürlichsprachige Regie-Anweisung (`TTS_STYLE`) und trifft den düsteren True-Crime-Doku-Ton.
+- **Umschaltbares Backend:** `TTS_BACKEND=gemini|edge` (Default `gemini`); edge-tts bleibt als
+  Fallback. Nur die szenenweise Vertonung ist backend-abhängig — Sync/Timecodes/Concat unverändert
+  (Gemini liefert PCM 24 kHz/mono/16-bit = bestehendes `AR`, slottet direkt in die Concat-Kette).
+- **Neue `.env`-Variablen:** `TTS_BACKEND`, `GOOGLE_API_KEY` (Google AI Studio),
+  `GEMINI_TTS_MODEL=gemini-2.5-flash-preview-tts`, `GEMINI_VOICE=Orus`, `TTS_STYLE` (Regie-Prompt).
+  **Stimme wechseln = nur `GEMINI_VOICE` ändern** (z. B. `Charon`, `Iapetus`, `Algenib`), kein Code.
+- **Gemini-Key-Format:** neue AI-Studio-Keys beginnen mit `AQ.Ab…` (nicht mehr `AIza…`, „Auth-Keys").
+  Funktionieren am nativen Gemini-Endpunkt (den `google-genai` nutzt); alte `AIza`-Keys werden ab
+  Sept. 2026 abgeschaltet.
+- **Rate-Limit:** Gratis-Tier = **3 TTS-Requests/Min**. `_gemini_scene()` respektiert die vom Server
+  gemeldete `retryDelay` (Backoff) → läuft durch, nur langsamer. Für Tempo Billing aktivieren.
+- **Reset dieser Umstellung:** die 3 Fälle in `review` (alte edge-Stimme) auf `state=neu` gesetzt +
+  `voice_url` geleert → per „Freigabe Analyse" neu mit Gemini/Orus vertonen.
+- Betroffene Dateien: `core/tts.py`, `requirements.txt` (+`google-genai`), `.env.example`, `UMSETZUNG.md`.
+
 ## Bekannte Punkte / TODO
 - **B-Roll-Bucket leer** → Render nutzt Farb-Kulissen, bis echte Higgsfield-Clips über die
   `/broll`-Seite hochgeladen sind (gleiche Namen `broll_<kategorie>_NN.mp4`).
