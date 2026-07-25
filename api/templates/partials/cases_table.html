@@ -1,0 +1,94 @@
+{# Quelle-Symbol: RSS (Presseportal-Feed) vs. Google Alert (Mail-Quelle).
+   Selbst-enthaltene Inline-SVGs — kein externer Request, funktioniert offline. #}
+{% macro source_icon(source) -%}
+  {%- if source == 'mail' -%}
+    <span class="source-icon" title="Google Alert (Mail)" aria-label="Google Alert">
+      <svg width="15" height="15" viewBox="0 0 48 48" style="vertical-align:middle">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.28-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+    </span>
+  {%- elif source == 'rss' -%}
+    <span class="source-icon" title="RSS-Feed (Presseportal)" aria-label="RSS">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="#f26522" style="vertical-align:middle">
+        <path d="M6.18 15.64a2.18 2.18 0 0 1 2.18 2.18C8.36 19.02 7.38 20 6.18 20 5 20 4 19.02 4 17.82a2.18 2.18 0 0 1 2.18-2.18M4 4.44A15.56 15.56 0 0 1 19.56 20h-2.83A12.73 12.73 0 0 0 4 7.27V4.44m0 4.66a10.9 10.9 0 0 1 10.9 10.9h-2.83A8.07 8.07 0 0 0 4 11.93V9.1z"/>
+      </svg>
+    </span>
+  {%- else -%}
+    <span class="source-icon" title="{{ source }}">{{ source or '—' }}</span>
+  {%- endif -%}
+{%- endmacro %}
+
+<div id="cases-table-wrap"
+     hx-get="/partials/cases-table"
+     hx-trigger="every 8s"
+     hx-include="#min_score_input,#state_filter_input"
+     hx-target="#cases-table-wrap"
+     hx-swap="innerHTML">
+
+  <div class="filters">
+    <div class="filter-group">
+      <label for="min_score_input">Score-Schwelle <output id="score_out">{{ min_score }}</output></label>
+      <input type="range" id="min_score_input" name="min_score" min="0" max="100" step="5"
+             value="{{ min_score }}"
+             oninput="document.getElementById('score_out').textContent=this.value"
+             hx-post="/config/min-score"
+             hx-trigger="change"
+             hx-target="#cases-table-wrap"
+             hx-swap="innerHTML"
+             hx-include="#state_filter_input">
+    </div>
+    <div class="filter-group">
+      <label for="state_filter_input">Status</label>
+      <select id="state_filter_input" name="state"
+              hx-get="/partials/cases-table"
+              hx-trigger="change"
+              hx-target="#cases-table-wrap"
+              hx-swap="innerHTML"
+              hx-include="#min_score_input">
+        <option value="">Alle</option>
+        {% for s in states %}
+        <option value="{{ s.value }}" {% if s.value == state %}selected{% endif %}>{{ s.value | state_label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+
+  <table class="cases-table">
+    <thead>
+      <tr>
+        <th>Quelle</th>
+        <th>Zeit</th>
+        <th>Score</th>
+        <th>Region</th>
+        <th>Titel</th>
+        <th>Status</th>
+        <th>Aktion</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in cases %}
+      <tr>
+        <td class="col-source">{{ source_icon(c.source) }}</td>
+        <td class="col-time">{{ c.created_at[:16].replace('T', ' ') if c.created_at else '—' }}</td>
+        <td class="col-score"><span class="score-chip">{{ c.score }}</span></td>
+        <td class="col-region">{{ c.region or '—' }}</td>
+        <td class="col-title"><a href="/cases/{{ c.id }}">{{ c.title or '(ohne Titel)' }}</a></td>
+        <td class="col-status"><span class="badge badge-{{ c.state }}">{{ c.state | state_label }}</span></td>
+        <td class="col-action">
+          <a class="btn btn-ghost btn-sm" href="/cases/{{ c.id }}">Ansehen</a>
+          {% if c.state == 'neu' %}
+          <form method="post" action="/cases/{{ c.id }}/freigabe-analyse" class="inline-form">
+            <button type="submit" class="btn btn-primary btn-sm">Freigabe Analyse</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="7" class="empty-row">Keine Fälle über der Schwelle.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

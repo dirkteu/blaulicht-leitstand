@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Anmelden — Blaulicht-Leitstand</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <div class="brand brand-center">
+      <span class="brand-mark">●</span>
+      <span class="brand-text">Blaulicht<span class="accent">-Leitstand</span></span>
+    </div>
+    <p class="login-sub">Interner Zugang. Bitte anmelden.</p>
+    {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+    <form method="post" action="/login" class="login-form">
+      <label for="password">Passwort</label>
+      <input type="password" id="password" name="password" autofocus required>
+      <button type="submit" class="btn btn-primary btn-block">Anmelden</button>
+    </form>
+    <p class="login-hint">MVP-Schranke per geteiltem Passwort — später Supabase Auth.</p>
+  </div>
+</body>
+</html>

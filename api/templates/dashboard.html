@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Blaulicht-Leitstand{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Fall-Übersicht</h1>
+  <div class="ingest-actions">
+    <button class="btn btn-outline btn-sm" hx-post="/ingest?source=rss" hx-target="#ingest-flash" hx-swap="innerHTML">
+      RSS abrufen
+    </button>
+    <button class="btn btn-outline btn-sm" hx-post="/ingest?source=mail" hx-target="#ingest-flash" hx-swap="innerHTML">
+      Mail abrufen
+    </button>
+  </div>
+</div>
+<div id="ingest-flash"></div>
+
+{% include "partials/cases_table.html" %}
+{% endblock %}

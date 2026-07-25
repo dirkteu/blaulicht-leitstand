@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Blaulicht-Leitstand{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/">
+        <span class="brand-mark">●</span>
+        <span class="brand-text">Blaulicht<span class="accent">-Leitstand</span></span>
+      </a>
+      <nav class="nav">
+        <a href="/" class="{{ 'active' if request.url.path == '/' else '' }}">Dashboard</a>
+        <a href="/broll" class="{{ 'active' if request.url.path == '/broll' else '' }}">B-Roll</a>
+      </nav>
+      <form method="post" action="/logout" class="logout-form">
+        <button type="submit" class="btn btn-ghost btn-sm">Abmelden</button>
+      </form>
+    </div>
+  </header>
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">
+    <span>Blaulicht-Leitstand · MVP-Auth (Passwort) · später Supabase Auth</span>
+  </footer>
+</body>
+</html>

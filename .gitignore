@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Lokale Prototyp-/Render-Artefakte (nicht Teil des Repos)
+assets/
+_frames/
+_bg/
+_bg.mp4
+preview.mp4
+video_spec.json
+reservoir.json
+top_case.json
+_*.png
+_*.py

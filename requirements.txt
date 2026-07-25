@@ -1,0 +1,30 @@
+# Blaulicht-Leitstand — gemeinsame Abhängigkeiten (alle Services)
+
+# Web / UI
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart          # Datei-Uploads (B-Roll)
+
+# Queue
+rq
+redis
+
+# Supabase (DB + Storage + Auth)
+supabase
+
+# KI / Extraktion + Skript
+anthropic
+
+# Ingest
+feedparser                # RSS
+beautifulsoup4            # Volltext-HTML parsen
+# (IMAP via stdlib imaplib — keine Extra-Abhängigkeit)
+
+# Medien
+pillow                    # Overlays
+edge-tts                  # Voiceover
+# ffmpeg = Systempaket (siehe Dockerfile)
+
+# Zeitplan
+apscheduler

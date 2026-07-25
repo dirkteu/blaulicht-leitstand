@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}B-Roll — Blaulicht-Leitstand{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>B-Roll-Bibliothek</h1>
+</div>
+
+<section class="panel">
+  <h2>Neuen Clip hochladen</h2>
+  {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/broll" enctype="multipart/form-data" class="upload-form">
+    <label for="kategorie">Kategorie</label>
+    <select id="kategorie" name="kategorie" required>
+      {% for k in kategorien %}
+      <option value="{{ k }}">{{ k }}</option>
+      {% endfor %}
+    </select>
+    <label for="file">Video-Datei</label>
+    <input type="file" id="file" name="file" accept="video/mp4,video/*" required>
+    <button type="submit" class="btn btn-primary">Hochladen</button>
+  </form>
+  <p class="muted small">Master-Clips liegen ausschließlich im Storage-Bucket „broll" — es gibt bewusst
+    keine Lösch-Funktion in dieser UI.</p>
+</section>
+
+<section class="panel">
+  <h2>Vorhandene Clips ({{ files | length }})</h2>
+  {% if files %}
+  <ul class="broll-list">
+    {% for f in files %}
+    <li>{{ f }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Noch keine B-Roll-Clips im Bucket.</p>
+  {% endif %}
+</section>
+{% endblock %}

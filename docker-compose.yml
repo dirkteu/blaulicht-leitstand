@@ -1,0 +1,58 @@
+# Blaulicht-Leitstand — Service-Verbund (Team 0 Gerüst)
+# Ein gemeinsames Image (Dockerfile), jeder Dienst startet einen anderen Command.
+# Redis ist der einzige interne Infra-Container; Supabase ist extern (managed).
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file: .env
+  depends_on:
+    redis:
+      condition: service_started
+  restart: unless-stopped
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+  api:
+    <<: *app
+    command: uvicorn api.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+
+  scheduler:
+    <<: *app
+    command: python -m scheduler.main        # reiht 2x/Tag den ingest-Job ein
+
+  worker-ingest:
+    <<: *app
+    command: rq worker ingest --url ${REDIS_URL}
+
+  worker-extract:
+    <<: *app
+    command: rq worker extract --url ${REDIS_URL}
+
+  worker-script:
+    <<: *app
+    command: rq worker script --url ${REDIS_URL}
+
+  worker-tts:
+    <<: *app
+    command: rq worker tts --url ${REDIS_URL}
+
+  worker-render:
+    <<: *app
+    command: rq worker render --url ${REDIS_URL}
+    # CPU-schwer (ffmpeg) — bei Bedarf hier Ressourcen/Replicas erhöhen
+
+  worker-publish:
+    <<: *app
+    command: rq worker publish --url ${REDIS_URL}
+
+volumes:
+  redis-data:

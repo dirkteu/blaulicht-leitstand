@@ -1,0 +1,24 @@
+<div id="media-panel"
+     hx-get="/cases/{{ case.id }}/partials/media"
+     hx-trigger="every 6s"
+     hx-target="#media-panel"
+     hx-swap="outerHTML">
+  <div class="media-row">
+    <div class="media-block">
+      <h3>Vertonung</h3>
+      {% if voice_url %}
+      <audio controls src="{{ voice_url }}"></audio>
+      {% else %}
+      <p class="muted">Noch keine Vertonung vorhanden.</p>
+      {% endif %}
+    </div>
+    <div class="media-block">
+      <h3>Clip</h3>
+      {% if video_url %}
+      <video controls src="{{ video_url }}"></video>
+      {% else %}
+      <p class="muted">Noch kein Clip gebaut.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>

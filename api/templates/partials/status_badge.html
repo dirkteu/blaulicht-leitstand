@@ -1,0 +1,9 @@
+<div id="status-panel"
+     hx-get="/cases/{{ case.id }}/partials/status"
+     hx-trigger="every 4s"
+     hx-target="#status-panel"
+     hx-swap="outerHTML">
+  <span class="badge badge-lg badge-{{ case.state }}">{{ case.state | state_label }}</span>
+  {% if case.error %}<span class="badge badge-error">Fehler: {{ case.error }}</span>{% endif %}
+  <span class="muted small">aktualisiert: {{ (case.updated_at or '')[:19].replace('T',' ') or '—' }}</span>
+</div>

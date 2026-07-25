@@ -1,0 +1,1082 @@
+{
+  "73990": [
+    "Bundespolizeipräsidium",
+    "Potsdam"
+  ],
+  "7": [
+    "Bundeskriminalamt",
+    "Wiesbaden"
+  ],
+  "110969": [
+    "Polizeipräsidium Aalen",
+    "Aalen"
+  ],
+  "110970": [
+    "Polizeipräsidium Freiburg",
+    "Freiburg"
+  ],
+  "110981": [
+    "Polizeipräsidium Einsatz",
+    "Göppingen"
+  ],
+  "110971": [
+    "Polizeipräsidium Heilbronn",
+    "Heilbronn"
+  ],
+  "116093": [
+    "Bundespolizeiinspektion Karlsruhe",
+    "Karlsruhe"
+  ],
+  "110972": [
+    "Polizeipräsidium Karlsruhe",
+    "Karlsruhe"
+  ],
+  "116092": [
+    "Bundespolizeiinspektion Konstanz",
+    "Konstanz"
+  ],
+  "110973": [
+    "Polizeipräsidium Konstanz",
+    "Konstanz"
+  ],
+  "110974": [
+    "Polizeipräsidium Ludwigsburg",
+    "Ludwigsburg"
+  ],
+  "14915": [
+    "Polizeipräsidium Mannheim",
+    "Mannheim"
+  ],
+  "75292": [
+    "Bundespolizeiinspektion Offenburg",
+    "Offenburg"
+  ],
+  "110975": [
+    "Polizeipräsidium Offenburg",
+    "Offenburg"
+  ],
+  "137462": [
+    "Polizeipräsidium Pforzheim",
+    "Pforzheim"
+  ],
+  "138081": [
+    "Polizeipräsidium Ravensburg",
+    "Ravensburg"
+  ],
+  "110976": [
+    "Polizeipräsidium Reutlingen",
+    "Reutlingen"
+  ],
+  "74709": [
+    "Bundespolizeidirektion Stuttgart",
+    "Stuttgart"
+  ],
+  "116095": [
+    "Bundespolizeiinspektion Flughafen Stuttgart",
+    "Stuttgart"
+  ],
+  "116091": [
+    "Bundespolizeiinspektion Stuttgart",
+    "Stuttgart"
+  ],
+  "110980": [
+    "Landeskriminalamt Baden-Württemberg",
+    "Stuttgart"
+  ],
+  "110977": [
+    "Polizeipräsidium Stuttgart",
+    "Stuttgart"
+  ],
+  "110979": [
+    "Polizeipräsidium Ulm",
+    "Ulm"
+  ],
+  "116094": [
+    "Bundespolizeiinspektion Weil am Rhein",
+    "Weil am Rhein"
+  ],
+  "64017": [
+    "Bundespolizeidirektion München",
+    "München"
+  ],
+  "6013": [
+    "Polizeipräsidium Mittelfranken",
+    "Nürnberg/Fürth"
+  ],
+  "169620": [
+    "Polizeipräsidium Schwaben Nord",
+    "Schwaben Nord"
+  ],
+  "72365": [
+    "Bund Deutscher Kriminalbeamter (BDK)",
+    "Berlin"
+  ],
+  "130761": [
+    "Bundespolizeidirektion 11",
+    "Berlin"
+  ],
+  "70238": [
+    "Bundespolizeidirektion Berlin",
+    "Berlin"
+  ],
+  "70255": [
+    "Bundespolizeiinspektion Bremen",
+    "Bremen"
+  ],
+  "35235": [
+    "Polizei Bremen",
+    "Bremen"
+  ],
+  "134196": [
+    "Polizei Bremerhaven",
+    "Bremerhaven"
+  ],
+  "70254": [
+    "Bundespolizeiinspektion Hamburg",
+    "Hamburg"
+  ],
+  "6337": [
+    "Polizei Hamburg",
+    "Hamburg"
+  ],
+  "70277": [
+    "Bundespolizeiinspektion Flughafen Hamburg",
+    "Hamburg Flughafen"
+  ],
+  "148303": [
+    "Polizei Presse A 49",
+    "A49"
+  ],
+  "4969": [
+    "Polizeipräsidium Südhessen",
+    "Darmstadt, Darmstadt-D..."
+  ],
+  "44151": [
+    "Polizei Eschwege",
+    "Eschwege"
+  ],
+  "74262": [
+    "Bundespolizeidirektion Flughafen Frankfurt am Main",
+    "Frankfurt"
+  ],
+  "4970": [
+    "Polizeipräsidium Frankfurt am Main",
+    "Frankfurt"
+  ],
+  "177765": [
+    "Bundespolizeiinspektion Kriminalitätsbekämpfung Frankfurt",
+    "Frankfurt Kriminalität..."
+  ],
+  "63987": [
+    "Bundespolizeiinspektion Frankfurt/Main",
+    "Frankfurt/Main"
+  ],
+  "43558": [
+    "Polizeipräsidium Osthessen",
+    "Fulda"
+  ],
+  "17277": [
+    "Polizeipräsidium Mittelhessen - Führungs- und Lagedienst",
+    "Gießen"
+  ],
+  "43559": [
+    "Polizeipräsidium Mittelhessen - Pressestelle Gießen",
+    "Gießen"
+  ],
+  "50152": [
+    "PD Hochtaunus - Polizeipräsidium Westhessen",
+    "Hochtaunus"
+  ],
+  "44149": [
+    "Polizei Homberg",
+    "Homberg"
+  ],
+  "63990": [
+    "Bundespolizeiinspektion Kassel",
+    "Kassel"
+  ],
+  "44143": [
+    "Polizeipräsidium Nordhessen",
+    "Kassel"
+  ],
+  "44150": [
+    "Polizei Korbach",
+    "Korbach"
+  ],
+  "56920": [
+    "Polizeipräsidium Mittelhessen - Pressestelle Lahn - Dill",
+    "Lahn-Dill"
+  ],
+  "50153": [
+    "PD Limburg-Weilburg - Polizeipräsidium Westhessen",
+    "Limburg-Weilburg"
+  ],
+  "50154": [
+    "PD Main-Taunus - Polizeipräsidium Westhessen",
+    "Main-Taunus"
+  ],
+  "43648": [
+    "Polizeipräsidium Mittelhessen - Pressestelle Marburg-Biedenkopf",
+    "Marburg-Biedenkopf"
+  ],
+  "154582": [
+    "Polizeipräsidium Mittelhessen - Pressestelle",
+    "Mittelhessen"
+  ],
+  "43561": [
+    "Polizeipräsidium Südosthessen",
+    "Offenbach"
+  ],
+  "47764": [
+    "PD Rheingau-Taunus - Polizeipräsidium Westhessen",
+    "Rheingau-Taunus"
+  ],
+  "43647": [
+    "Polizeipräsidium Mittelhessen - Pressestelle Wetterau",
+    "Wetterau-Friedberg"
+  ],
+  "43563": [
+    "Hessisches Landeskriminalamt",
+    "Wiesbaden"
+  ],
+  "62288": [
+    "PASt (KvD) - Polizeipräsidium Westhessen",
+    "Wiesbaden"
+  ],
+  "50177": [
+    "Wiesbaden (PvD) - Polizeipräsidium Westhessen",
+    "Wiesbaden"
+  ],
+  "11815": [
+    "Wiesbaden (KvD) - Polizeipräsidium Westhessen",
+    "Wiesbaden"
+  ],
+  "43562": [
+    "Wiesbaden - Polizeipräsidium Westhessen",
+    "Wiesbaden"
+  ],
+  "43615": [
+    "Hessisches Polizeipräsidium Einsatz",
+    "Wiesbaden"
+  ],
+  "171964": [
+    "Bundespolizeiinspektion Kriminalitätsbekämpfung Rostock",
+    "Bundespolizeiinspektion Kriminalitätsbekämpfung Rostock"
+  ],
+  "108768": [
+    "Polizeiinspektion Anklam",
+    "Anklam"
+  ],
+  "108749": [
+    "Landeswasserschutzpolizeiamt Mecklenburg-Vorpommern",
+    "Dummerstorf"
+  ],
+  "108766": [
+    "Polizeiinspektion Güstrow",
+    "Güstrow"
+  ],
+  "108748": [
+    "Landeskriminalamt Mecklenburg-Vorpommern",
+    "Leezen"
+  ],
+  "108763": [
+    "Polizeiinspektion Ludwigslust",
+    "Ludwigslust"
+  ],
+  "108770": [
+    "Polizeiinspektion Neubrandenburg",
+    "Neubrandenburg"
+  ],
+  "108747": [
+    "Polizeipräsidium Neubrandenburg",
+    "Neubrandenburg"
+  ],
+  "70259": [
+    "Bundespolizeiinspektion Pasewalk mit Gemeinsamer deutsch-polnischer Dienststelle Pomellen",
+    "Pasewalk mit Gemeinsam..."
+  ],
+  "50067": [
+    "Bundespolizeiinspektion Rostock",
+    "Rostock"
+  ],
+  "108765": [
+    "Polizeiinspektion Rostock",
+    "Rostock"
+  ],
+  "108746": [
+    "Polizeipräsidium Rostock",
+    "Rostock"
+  ],
+  "83338": [
+    "Polizeiinspektion Schwerin",
+    "Schwerin"
+  ],
+  "70258": [
+    "Bundespolizeiinspektion Stralsund",
+    "Stralsund"
+  ],
+  "108767": [
+    "Polizeiinspektion Stralsund",
+    "Stralsund"
+  ],
+  "70261": [
+    "Bundespolizeiinspektion See Warnemünde",
+    "Warnemünde"
+  ],
+  "108764": [
+    "Polizeiinspektion Wismar",
+    "Wismar"
+  ],
+  "104233": [
+    "Polizeiinspektion Aurich/Wittmund",
+    "Aurich"
+  ],
+  "70276": [
+    "Bundespolizeiinspektion Bad Bentheim",
+    "Bad Bentheim"
+  ],
+  "71298": [
+    "Zentrale Polizeidirektion Braunschweig",
+    "Braunschweig"
+  ],
+  "11554": [
+    "Polizei Braunschweig",
+    "Braunschweig"
+  ],
+  "59457": [
+    "Polizeiinspektion Celle",
+    "Celle"
+  ],
+  "70090": [
+    "Polizeiinspektion Cloppenburg/Vechta",
+    "Cloppenburg / Vechta"
+  ],
+  "70260": [
+    "Bundespolizeiinspektion See Cuxhaven",
+    "Cuxhaven"
+  ],
+  "68437": [
+    "Polizeiinspektion Cuxhaven",
+    "Cuxhaven"
+  ],
+  "68438": [
+    "Polizeiinspektion Delmenhorst / Oldenburg - Land / Wesermarsch",
+    "Delmenhorst / Oldenbur..."
+  ],
+  "68439": [
+    "Polizeiinspektion Diepholz",
+    "Diepholz"
+  ],
+  "70997": [
+    "Wasserschutzpolizei Emden",
+    "Emden"
+  ],
+  "56517": [
+    "Polizeiinspektion Gifhorn",
+    "Gifhorn"
+  ],
+  "56518": [
+    "Polizeiinspektion Goslar",
+    "Goslar"
+  ],
+  "7452": [
+    "Polizeidirektion Göttingen",
+    "Göttingen"
+  ],
+  "119508": [
+    "Polizeiinspektion Göttingen",
+    "Göttingen"
+  ],
+  "57895": [
+    "Polizeiinspektion Hameln-Pyrmont/Holzminden",
+    "Hameln-Pyrmont/Holzmin..."
+  ],
+  "70246": [
+    "Bundespolizeidirektion Hannover",
+    "Hannover"
+  ],
+  "74149": [
+    "Bundespolizeiinspektion Flughafen Hannover",
+    "Hannover"
+  ],
+  "70388": [
+    "Bundespolizeiinspektion Hannover",
+    "Hannover"
+  ],
+  "105578": [
+    "Landeskriminalamt Niedersachsen",
+    "Hannover"
+  ],
+  "66841": [
+    "Polizeidirektion Hannover",
+    "Hannover"
+  ],
+  "67812": [
+    "Zentrale Polizeidirektion Niedersachsen",
+    "Hannover"
+  ],
+  "71297": [
+    "Zentrale Polizeidirektion Hannover",
+    "Hannover"
+  ],
+  "59458": [
+    "Polizeiinspektion Harburg",
+    "Harburg"
+  ],
+  "59460": [
+    "Polizeiinspektion Heidekreis",
+    "Heidekreis"
+  ],
+  "57621": [
+    "Polizeiinspektion Hildesheim",
+    "Hildesheim"
+  ],
+  "104235": [
+    "Polizeiinspektion Leer/Emden",
+    "Leer/Emden"
+  ],
+  "104234": [
+    "Polizeiinspektion Emsland/Grafschaft Bentheim",
+    "Lingen"
+  ],
+  "71301": [
+    "Zentrale Polizeidirektion Lüneburg",
+    "Lüneburg"
+  ],
+  "56836": [
+    "Polizeidirektion Lüneburg",
+    "Lüneburg"
+  ],
+  "59488": [
+    "Polizeiinspektion Lüneburg/Lüchow-Dannenberg/Uelzen",
+    "Lüneburg"
+  ],
+  "59487": [
+    "Zentrale Kriminalinspektion Lüneburg",
+    "Lüneburg"
+  ],
+  "165909": [
+    "Wasserschutzpolizeistation Nienburg",
+    "Nienburg"
+  ],
+  "57929": [
+    "Polizeiinspektion Northeim",
+    "Northeim/Osterode"
+  ],
+  "71299": [
+    "Zentrale Polizeidirektion Oldenburg",
+    "Oldenburg"
+  ],
+  "62353": [
+    "Polizeidirektion Oldenburg",
+    "Oldenburg"
+  ],
+  "119277": [
+    "Wasserschutzpolizeiinspektion Oldenburg",
+    "Oldenburg"
+  ],
+  "68443": [
+    "Zentrale Kriminalinspektion Oldenburg",
+    "Oldenburg"
+  ],
+  "68440": [
+    "Polizeiinspektion Oldenburg-Stadt / Ammerland",
+    "Oldenburg-Stadt / Amme..."
+  ],
+  "104232": [
+    "Polizeidirektion Osnabrück",
+    "Osnabrück"
+  ],
+  "104236": [
+    "Polizeiinspektion Osnabrück",
+    "Osnabrück"
+  ],
+  "59459": [
+    "Polizeiinspektion Rotenburg",
+    "Rotenburg"
+  ],
+  "56519": [
+    "Polizei Salzgitter",
+    "Salzgitter"
+  ],
+  "59461": [
+    "Polizeiinspektion Stade",
+    "Stade"
+  ],
+  "57922": [
+    "Polizeiinspektion Nienburg / Schaumburg",
+    "Stadthagen"
+  ],
+  "68441": [
+    "Polizeiinspektion Verden / Osterholz",
+    "Verden"
+  ],
+  "68442": [
+    "Polizeiinspektion Wilhelmshaven/Friesland",
+    "Wilhelmshaven / Friesl..."
+  ],
+  "56520": [
+    "Polizei Wolfsburg",
+    "Wolfsburg"
+  ],
+  "11559": [
+    "Polizei Aachen",
+    "Aachen"
+  ],
+  "12522": [
+    "Polizei Bielefeld",
+    "Bielefeld"
+  ],
+  "11530": [
+    "Polizei Bochum",
+    "Bochum"
+  ],
+  "7304": [
+    "Polizei Bonn",
+    "Bonn"
+  ],
+  "24843": [
+    "Kreispolizeibehörde Borken",
+    "Borken"
+  ],
+  "6006": [
+    "Polizei Coesfeld",
+    "Coesfeld"
+  ],
+  "4971": [
+    "Polizei Dortmund",
+    "Dortmund"
+  ],
+  "67238": [
+    "Landesamt für Zentrale Polizeiliche Dienste NRW",
+    "Duisburg"
+  ],
+  "50510": [
+    "Polizei Duisburg",
+    "Duisburg"
+  ],
+  "8": [
+    "Polizei Düren",
+    "Düren"
+  ],
+  "58451": [
+    "Landeskriminalamt Nordrhein-Westfalen",
+    "Düsseldorf"
+  ],
+  "13248": [
+    "Polizei Düsseldorf",
+    "Düsseldorf"
+  ],
+  "12726": [
+    "Kreispolizeibehörde Ennepe-Ruhr-Kreis",
+    "Ennepe-Ruhr-Kreis"
+  ],
+  "11562": [
+    "Polizei Essen",
+    "Essen"
+  ],
+  "65841": [
+    "Kreispolizeibehörde Euskirchen",
+    "Euskirchen"
+  ],
+  "51056": [
+    "Polizei Gelsenkirchen",
+    "Gelsenkirchen"
+  ],
+  "23127": [
+    "Polizei Gütersloh",
+    "Gütersloh"
+  ],
+  "30835": [
+    "Polizei Hagen",
+    "Hagen"
+  ],
+  "65844": [
+    "Polizeipräsidium Hamm",
+    "Hamm"
+  ],
+  "65845": [
+    "Kreispolizeibehörde Heinsberg",
+    "Heinsberg"
+  ],
+  "65846": [
+    "Kreispolizeibehörde Herford",
+    "Herford"
+  ],
+  "65847": [
+    "Kreispolizeibehörde Hochsauerlandkreis",
+    "Hochsauerlandkreis"
+  ],
+  "65848": [
+    "Kreispolizeibehörde Höxter",
+    "Höxter"
+  ],
+  "65849": [
+    "Kreispolizeibehörde Kleve",
+    "Kleve"
+  ],
+  "50667": [
+    "Polizeipräsidium Krefeld",
+    "Krefeld"
+  ],
+  "12415": [
+    "Polizei Köln",
+    "Köln"
+  ],
+  "12727": [
+    "Polizei Lippe",
+    "Lippe"
+  ],
+  "43777": [
+    "Polizei Mettmann",
+    "Mettmann"
+  ],
+  "43553": [
+    "Polizei Minden-Lübbecke",
+    "Minden-Lübbecke"
+  ],
+  "65850": [
+    "Kreispolizeibehörde Märkischer Kreis",
+    "Märkischer Kreis"
+  ],
+  "30127": [
+    "Polizei Mönchengladbach",
+    "Mönchengladbach"
+  ],
+  "11187": [
+    "Polizei Münster",
+    "Münster"
+  ],
+  "65843": [
+    "Kreispolizeibehörde Oberbergischer Kreis",
+    "Oberbergischer Kreis"
+  ],
+  "62138": [
+    "Polizeipräsidium Oberhausen",
+    "Oberhausen"
+  ],
+  "65852": [
+    "Kreispolizeibehörde Olpe",
+    "Olpe"
+  ],
+  "55625": [
+    "Polizei Paderborn",
+    "Paderborn"
+  ],
+  "42900": [
+    "Polizeipräsidium Recklinghausen",
+    "Recklinghausen"
+  ],
+  "10374": [
+    "Polizei Rhein-Erft-Kreis",
+    "Rhein-Erft-Kreis"
+  ],
+  "65851": [
+    "Kreispolizeibehörde Rhein-Kreis Neuss",
+    "Rhein-Kreis Neuss"
+  ],
+  "65853": [
+    "Kreispolizeibehörde Rhein-Sieg-Kreis",
+    "Rhein-Sieg-Kreis"
+  ],
+  "62459": [
+    "Polizei Rheinisch-Bergischer Kreis",
+    "Rheinisch-Bergischer K..."
+  ],
+  "70116": [
+    "Bundespolizeidirektion Sankt Augustin",
+    "Sankt Augustin"
+  ],
+  "29987": [
+    "Landesamt für Ausbildung, Fortbildung und Personalangelegenheiten der Polizei NRW",
+    "Selm"
+  ],
+  "65854": [
+    "Kreispolizeibehörde Siegen-Wittgenstein",
+    "Siegen-Wittgenstein"
+  ],
+  "65855": [
+    "Kreispolizeibehörde Soest",
+    "Soest"
+  ],
+  "43526": [
+    "Polizei Steinfurt",
+    "Steinfurt"
+  ],
+  "65856": [
+    "Kreispolizeibehörde Unna",
+    "Unna"
+  ],
+  "65857": [
+    "Kreispolizeibehörde Viersen",
+    "Viersen"
+  ],
+  "52656": [
+    "Polizei Warendorf",
+    "Warendorf"
+  ],
+  "65858": [
+    "Kreispolizeibehörde Wesel",
+    "Wesel"
+  ],
+  "11811": [
+    "Polizei Wuppertal",
+    "Wuppertal"
+  ],
+  "131673": [
+    "Polizeiinspektion Alzey",
+    "Alzey"
+  ],
+  "117703": [
+    "Polizeidirektion Bad Kreuznach",
+    "Bad Kreuznach"
+  ],
+  "131675": [
+    "Polizeiinspektion Bingen",
+    "Bingen"
+  ],
+  "178882": [
+    "Polizeiinspektion Dahn",
+    "Dahn"
+  ],
+  "131671": [
+    "Polizeiinspektion Ingelheim",
+    "Ingelheim"
+  ],
+  "70139": [
+    "Bundespolizeiinspektion Kaiserslautern",
+    "Kaiserslautern"
+  ],
+  "178880": [
+    "Polizeiautobahnstation Kaiserslautern und Zentrale Verkehrsdienste",
+    "Kaiserslautern"
+  ],
+  "117679": [
+    "Polizeidirektion Kaiserslautern",
+    "Kaiserslautern"
+  ],
+  "117683": [
+    "Polizeipräsidium Westpfalz",
+    "Kaiserslautern"
+  ],
+  "131674": [
+    "Polizeiinspektion Kirchheimbolanden",
+    "Kirchheimbolanden"
+  ],
+  "131677": [
+    "Polizeiinspektion Kirn",
+    "Kirn"
+  ],
+  "70137": [
+    "Bundespolizeidirektion Koblenz",
+    "Koblenz"
+  ],
+  "117712": [
+    "Polizeidirektion Koblenz",
+    "Koblenz"
+  ],
+  "117715": [
+    "Polizeipräsidium Koblenz",
+    "Koblenz"
+  ],
+  "178879": [
+    "Polizeiinspektion Kusel und Polizeiwache Schönenberg-Kübelberg",
+    "Kusel"
+  ],
+  "117686": [
+    "Polizeidirektion Landau",
+    "Landau"
+  ],
+  "178876": [
+    "Polizeiinspektion Landstuhl",
+    "Landstuhl"
+  ],
+  "178877": [
+    "Polizeiinspektion Lauterecken",
+    "Lauterecken"
+  ],
+  "117688": [
+    "Polizeidirektion Ludwigshafen",
+    "Ludwigshafen"
+  ],
+  "117696": [
+    "Polizeipräsidium Rheinpfalz",
+    "Ludwigshafen"
+  ],
+  "29763": [
+    "Landeskriminalamt Rheinland-Pfalz",
+    "Mainz"
+  ],
+  "117705": [
+    "Polizeidirektion Mainz",
+    "Mainz"
+  ],
+  "117708": [
+    "Polizeipräsidium Mainz",
+    "Mainz"
+  ],
+  "117711": [
+    "Polizeidirektion Mayen",
+    "Mayen"
+  ],
+  "117710": [
+    "Polizeidirektion Montabaur",
+    "Montabaur"
+  ],
+  "117687": [
+    "Polizeidirektion Neustadt/Weinstraße",
+    "Neustadt/Weinstraße"
+  ],
+  "117709": [
+    "Polizeidirektion Neuwied/Rhein",
+    "Neuwied/Rhein"
+  ],
+  "131672": [
+    "Polizeiinspektion Oppenheim",
+    "Oppenheim"
+  ],
+  "117677": [
+    "Polizeidirektion Pirmasens",
+    "Pirmasens"
+  ],
+  "117719": [
+    "Polizeipräsidium Einsatz, Logistik und Technik",
+    "Polizeipräsidium Einsa..."
+  ],
+  "178878": [
+    "Polizeiinspektion Rockenhausen",
+    "Rockenhausen"
+  ],
+  "70138": [
+    "Bundespolizeiinspektion Trier",
+    "Trier"
+  ],
+  "117698": [
+    "Polizeidirektion Trier",
+    "Trier"
+  ],
+  "117701": [
+    "Polizeipräsidium Trier",
+    "Trier"
+  ],
+  "178883": [
+    "Polizeiinspektion Waldfischbach-Burgalben",
+    "Waldfischbach-Burgalben"
+  ],
+  "117697": [
+    "Polizeidirektion Wittlich",
+    "Wittlich"
+  ],
+  "117702": [
+    "Polizeidirektion Worms",
+    "Worms"
+  ],
+  "178881": [
+    "Polizeiinspektion Zweibrücken",
+    "Zweibrücken"
+  ],
+  "138521": [
+    "Polizeiinspektion Homburg",
+    "Homburg"
+  ],
+  "138502": [
+    "Polizeiinspektion Lebach",
+    "Lebach"
+  ],
+  "138504": [
+    "Polizeiinspektion Merzig",
+    "Merzig"
+  ],
+  "138511": [
+    "Polizeiinspektion Neunkirchen",
+    "Neunkirchen"
+  ],
+  "138505": [
+    "Polizeiinspektion Nordsaarland",
+    "Nordsaarland"
+  ],
+  "70140": [
+    "Bundespolizeiinspektion Saarbrücken",
+    "Saarbrücken"
+  ],
+  "138341": [
+    "Polizeiinspektion Saarbrücken-Burbach",
+    "Saarbrücken-Burbach"
+  ],
+  "138303": [
+    "Polizeiinspektion Saarbrücken-Stadt",
+    "Saarbrücken-Stadt"
+  ],
+  "120462": [
+    "Landespolizeidirektion Saarland",
+    "Saarland"
+  ],
+  "138489": [
+    "Polizeiinspektion Saarlouis",
+    "Saarlouis"
+  ],
+  "138534": [
+    "Polizeiinspektion Sankt Ingbert",
+    "St. Ingbert"
+  ],
+  "138507": [
+    "Polizeiinspektion Sankt Wendel",
+    "St. Wendel"
+  ],
+  "138473": [
+    "Polizeiinspektion Sulzbach",
+    "Sulzbach"
+  ],
+  "138422": [
+    "Polizeiinspektion Völklingen",
+    "Völklingen"
+  ],
+  "74163": [
+    "Bundespolizeiinspektion Berggießhübel",
+    "Berggießhübel"
+  ],
+  "74164": [
+    "Bundespolizeiinspektion Chemnitz",
+    "Chemnitz"
+  ],
+  "74162": [
+    "Bundespolizeiinspektion Dresden",
+    "Dresden"
+  ],
+  "74161": [
+    "Bundespolizeiinspektion Ebersbach",
+    "Ebersbach"
+  ],
+  "74166": [
+    "Bundespolizeiinspektion Klingenthal",
+    "Klingenthal"
+  ],
+  "74165": [
+    "Bundespolizeiinspektion Leipzig",
+    "Leipzig"
+  ],
+  "74160": [
+    "Bundespolizeiinspektion Ludwigsdorf",
+    "Ludwigsdorf"
+  ],
+  "74159": [
+    "Bundespolizeidirektion Pirna",
+    "Pirna"
+  ],
+  "144602": [
+    "Bundespolizeiinspektion Kriminalitätsbekämpfung Halle",
+    "Halle"
+  ],
+  "74168": [
+    "Bundespolizeiinspektion Magdeburg",
+    "Magdeburg"
+  ],
+  "43800": [
+    "Wasserschutzpolizei Schleswig-Holstein",
+    "Wasserschutzpolizei Schleswig-Holstein"
+  ],
+  "70256": [
+    "Bundespolizeidirektion Bad Bramstedt",
+    "Bad Bramstedt"
+  ],
+  "19027": [
+    "Polizeidirektion Bad Segeberg",
+    "Bad Segeberg"
+  ],
+  "43685": [
+    "Polizeidirektion für Aus- und Fortbildung und für die Bereitschaftspolizei Schleswig-Holstein",
+    "Eutin"
+  ],
+  "50066": [
+    "Bundespolizeiinspektion Flensburg",
+    "Flensburg"
+  ],
+  "6313": [
+    "Polizeidirektion Flensburg",
+    "Flensburg"
+  ],
+  "29305": [
+    "Bezirkskriminalinspektion Itzehoe",
+    "Itzehoe"
+  ],
+  "52209": [
+    "Polizeidirektion Itzehoe",
+    "Itzehoe"
+  ],
+  "70257": [
+    "Bundespolizeiinspektion Kiel",
+    "Kiel"
+  ],
+  "2256": [
+    "Landeskriminalamt Schleswig-Holstein",
+    "Kiel"
+  ],
+  "58623": [
+    "Landespolizeiamt",
+    "Kiel"
+  ],
+  "14626": [
+    "Polizeidirektion Kiel",
+    "Kiel"
+  ],
+  "43738": [
+    "Polizeidirektion Lübeck",
+    "Lübeck"
+  ],
+  "47769": [
+    "Polizeidirektion Neumünster",
+    "Neumünster"
+  ],
+  "70262": [
+    "Bundespolizeiinspektion See Neustadt / Holstein",
+    "Neustadt / Holstein"
+  ],
+  "43735": [
+    "Polizeidirektion Ratzeburg",
+    "Ratzeburg"
+  ],
+  "74167": [
+    "Bundespolizeiinspektion Erfurt",
+    "Erfurt"
+  ],
+  "169341": [
+    "Landeskriminalamt Thüringen",
+    "Erfurt"
+  ],
+  "125951": [
+    "Landespolizeidirektion Thüringen",
+    "Erfurt"
+  ],
+  "126719": [
+    "Landespolizeiinspektion Erfurt",
+    "Erfurt"
+  ],
+  "126720": [
+    "Landespolizeiinspektion Gera",
+    "Gera"
+  ],
+  "126721": [
+    "Landespolizeiinspektion Gotha",
+    "Gotha"
+  ],
+  "126722": [
+    "Landespolizeiinspektion Jena",
+    "Jena"
+  ],
+  "126723": [
+    "Landespolizeiinspektion Nordhausen",
+    "Nordhausen"
+  ],
+  "126724": [
+    "Landespolizeiinspektion Saalfeld",
+    "Saalfeld"
+  ],
+  "126726": [
+    "Autobahnpolizeiinspektion",
+    "Schleifreisen"
+  ],
+  "126725": [
+    "Landespolizeiinspektion Suhl",
+    "Suhl"
+  ]
+}
