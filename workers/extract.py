@@ -20,7 +20,7 @@ from redis import Redis
 from rq import Queue
 
 from core import parse
-from core.contracts import Queue as QueueName
+from core.contracts import Queue as QueueName, queue_timeout
 from core.extract import extract_facts, sanitize
 from core.presseportal import fetch_fulltext  # Team 2 — siehe Docstring
 from core.supa import get_case, update_case
@@ -47,5 +47,6 @@ def extract(case_id: str) -> None:
         raise
 
     redis_conn = Redis.from_url(os.environ["REDIS_URL"])
-    queue = Queue(QueueName.SCRIPT.value, connection=redis_conn)
+    queue = Queue(QueueName.SCRIPT.value, connection=redis_conn,
+                  default_timeout=queue_timeout(QueueName.SCRIPT))
     queue.enqueue("workers.script.script", case_id)

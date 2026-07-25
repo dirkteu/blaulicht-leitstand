@@ -24,7 +24,7 @@ from apscheduler.triggers.cron import CronTrigger
 from redis import Redis
 from rq import Queue
 
-from core.contracts import Queue as QueueName, Source
+from core.contracts import Queue as QueueName, Source, queue_timeout
 from core.supa import get_config
 
 DEFAULT_INGEST_TIMES = "07:00,19:00"
@@ -50,7 +50,8 @@ def enqueue_ingest() -> None:
     """Wird zu jeder konfigurierten Uhrzeit ausgefuehrt: reiht je einen
     Ingest-Job pro Quelle (rss, mail) in die Queue 'ingest' ein."""
     redis_conn = Redis.from_url(os.environ["REDIS_URL"])
-    q = Queue(QueueName.INGEST.value, connection=redis_conn)
+    q = Queue(QueueName.INGEST.value, connection=redis_conn,
+              default_timeout=queue_timeout(QueueName.INGEST))
     for source in (Source.RSS.value, Source.MAIL.value):
         job = q.enqueue("workers.ingest.ingest", source)
         print(f"[scheduler] Ingest-Job eingereiht: source={source} job_id={job.id}")

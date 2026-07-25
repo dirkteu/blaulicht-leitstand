@@ -123,6 +123,18 @@ der Fall läuft ganz normal weiter (kein Sonderpfad).
   `api/static/style.css`, `supabase/migrations/0002_ort_tat.sql` + `0003_warnung.sql`.
 - **Nach dem Ziehen:** `docker compose up -d --build` (Code läuft in `worker-ingest`/`worker-extract`, Anzeige in `api`).
 
+## Update 2026-07-26 (Job-Timeouts — TTS/Render/Ingest liefen in 180 s-Limit)
+- **Symptom:** Fall hing in `in_analyse` mit `FEHLER: TTS: TASK EXCEEDED MAXIMUM TIMEOUT VALUE (180 SECONDS)`.
+- **Ursache:** RQ-Default-Job-Timeout = 180 s. TTS läuft im Gemini-**Gratis-Tier (3 Req/Min)** mit
+  Backoff; ein Skript mit mehreren Szenen überschreitet 180 s allein durchs Rate-Limit → RQ killt den Job.
+  Dieselbe Falle drohte bei **Render** (ffmpeg) und **Ingest** (~270 Dienststellen, ~3 min).
+- **Fix:** zentrale Timeout-Tabelle `core/contracts.QUEUE_TIMEOUTS` + `queue_timeout()`, als
+  `default_timeout` an jede RQ-Queue gehängt (api-`queue()`, `workers/extract.py`→script,
+  `workers/script.py`→tts, `scheduler/main.py`→ingest). Werte: tts 1200 s, render/ingest 900 s,
+  extract/script/publish 300 s. Behebt das **Abbrechen** — TTS bleibt im Gratis-Tier aber langsam
+  (Minuten); für Tempo Google-**Billing** aktivieren.
+- Hängenden Ahlen-Fall: `error`-Feld geleert (State `in_analyse` belassen → nach Rebuild neu vertonen).
+
 ## Bekannte Punkte / TODO
 - **B-Roll-Bucket leer** → Render nutzt Farb-Kulissen, bis echte Higgsfield-Clips über die
   `/broll`-Seite hochgeladen sind (gleiche Namen `broll_<kategorie>_NN.mp4`).

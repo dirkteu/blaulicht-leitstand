@@ -119,6 +119,33 @@ class Job:
     reason: str = "auto"                # „auto" (Verkettung) oder „freigabe:<gate>"
 
 
+# Job-Timeouts je Stufe (Sekunden). Der RQ-Default (180 s) ist fuer mehrere
+# Stufen zu knapp und killt sonst laufende Jobs mitten in der Arbeit:
+#   - TTS: Gemini-Gratis-Limit 3 Requests/Min + Backoff, mehrere Szenen.
+#   - Render: ffmpeg-Compositing.
+#   - Ingest: ~270 Dienststellen sequentiell (~3 min).
+# Wird als default_timeout an die jeweilige RQ-Queue gehaengt (api, workers,
+# scheduler) und beim Enqueue in den Job uebernommen.
+QUEUE_TIMEOUTS: dict[Queue, int] = {
+    Queue.INGEST:  900,
+    Queue.EXTRACT: 300,
+    Queue.SCRIPT:  300,
+    Queue.TTS:     1200,
+    Queue.RENDER:  900,
+    Queue.PUBLISH: 300,
+}
+
+
+def queue_timeout(q: "Queue | str") -> int:
+    """Job-Timeout (Sekunden) fuer eine Queue; grosszuegiger Fallback 600 s."""
+    if isinstance(q, str):
+        try:
+            q = Queue(q)
+        except ValueError:
+            return 600
+    return QUEUE_TIMEOUTS.get(q, 600)
+
+
 # Storage-Buckets (Supabase Storage)
 class Bucket(str, Enum):
     BROLL = "broll"       # Master-Clips (nur lesen im Render!)
