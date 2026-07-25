@@ -136,6 +136,14 @@ der Fall läuft ganz normal weiter (kein Sonderpfad).
 - Hängenden Ahlen-Fall: `error`-Feld geleert (State `in_analyse` belassen → nach Rebuild neu vertonen).
 
 ## Bekannte Punkte / TODO
+- **Gemini-TTS Gratis-Tages-Quota = 10 Requests/Tag** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
+  Modell `gemini-2.5-flash(-preview)-tts`). Jede **Szene = 1 Request** → ~10 Szenen/Tag, reicht kaum für
+  **einen** Clip. Ist das Tageslimit erschöpft, schlägt TTS mit `429 RESOURCE_EXHAUSTED` fehl (der
+  `retryDelay`-Backoff hilft NICHT, ein Tageslimit läuft nicht in Sekunden zurück) → Fall bleibt
+  `in_analyse` mit `error=tts: … 429`. **Neben** dem Minuten-Limit (3 Req/Min). Auswege:
+  (a) **`TTS_BACKEND=edge`** in `.env` + `docker compose up -d` — gratis, sofort, kein Limit, aber monotonere
+  Stimme; (b) **Google-Billing** aktivieren — hebt das Limit auf, Orus-Stimme bleibt; (c) bis zum täglichen
+  Reset warten (unpraktisch bei mehreren Szenen).
 - **B-Roll-Bucket leer** → Render nutzt Farb-Kulissen, bis echte Higgsfield-Clips über die
   `/broll`-Seite hochgeladen sind (gleiche Namen `broll_<kategorie>_NN.mp4`).
 - **Ingest langsam** (~270 Dienststellen sequenziell, ~3 min) → später Threading/Limit.
