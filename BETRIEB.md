@@ -1,6 +1,6 @@
 # Betriebshandbuch — Blaulicht-Leitstand
 
-**Status (2026-07-25): 🟢 LIVE — erster voller Durchlauf erfolgreich.**
+**Status (2026-07-26): 🟢 LIVE — kompletter Clip end-to-end (Ingest → Orus-Stimme → echtes B-Roll → Render → Publish) bewiesen.**
 Gebaut von 5 Agent-Teams, containerisiert, an Supabase, verarbeitet echte Polizeimeldungen.
 
 ## Zugang
@@ -145,20 +145,412 @@ der Fall läuft ganz normal weiter (kein Sonderpfad).
   In `review`/`fertig` kein Polling → stabiles `<audio>`. Nach „Clip bauen" (→ `in_produktion`) pollt es
   wieder fürs Video und stoppt danach erneut. Verifiziert: Panel ohne `hx-trigger`, Audio-Dauer 33,4 s.
 
+## Update 2026-07-26 (Strategie Phase 1 + erster kompletter Clip + Prompt-Generator)
+
+### Strategie Phase 1 (per /grill-me abgestimmt, verbindlich)
+| # | Thema | Entscheidung |
+|---|---|---|
+| 1 | Ziel | Ernsthaftes Content-Business (Reichweite → später Monetarisierung) |
+| 2 | Nische | Zigaretten**automaten + Geldautomaten**-Sprengungen, bewusst eng |
+| 3 | Kanäle | **YT Shorts primär + TikTok + Reels** (dieselbe 9:16-Datei), 1 Fall = 1 Clip |
+| 4 | Recht | Volle Guardrails: 48–72 h Alter-Gate, „mutmaßlich/unbekannt", sachlicher Ton |
+| 5 | Ausstoß | 3 Clips/Woche, Google-**Billing aktiv** |
+| 6 | B-Roll | Higgsfield-Bibliothek (5–8 Kategorien) |
+| 7 | Publish | Manueller Upload + KI-Textvorschläge je Plattform |
+| 8 | Betrieb | Lokal, VPS später |
+| 9 | Langform | Vorgezogen, aber erst NACH den ersten 10 Shorts |
+| 10 | Meilenstein | 10 Shorts → 1. Langform → 1.000 Views |
+
+**Einnahme-Realität:** Shorts-RPM winzig (~1–5 ct/1000) → Kurzform = Abo-Trichter, Phase 1 ≈ 0 €.
+Echtes Geld erst über Langform (4.000-Watch-Std-Pfad). Sachlicher Ton ist auch Policy-Schutz
+(YouTube 2025-Regeln gegen massenproduzierte/repetitive Inhalte).
+
+### Umgesetzt (Code/Konfig)
+- **Geldautomaten-Nische:** Score-Bonus `🏧 Geldautomat +15` (`core/scoring.py`); `ALERT_TOPIC_KEYWORDS`
+  + Code-Default um `geldautomat,bankautomat,ec-automat` erweitert. RSS = Hauptweg (Mail-Betreff-Filter bleibt `zigaretten`).
+- **Guardrail Sprache:** `core/script.py` → Konjunktiv + „mutmaßliche/unbekannte Täter" (Helper `_taeter()`);
+  `core/extract.py`-Prompt erzwingt Unschuldsvermutung auch in `details`.
+- **Guardrail Alter-Gate:** `workers/publish.py` blockiert Fälle < `MIN_PUBLISH_AGE_HOURS` (Default 48 h,
+  facts.datum sonst created_at); Override `force=True`/ENV=0. Beide Richtungen getestet.
+- **Google-Billing verifiziert:** 5/5 Burst-Requests ohne 429 (User musste neuen Key am bebillten Projekt
+  ziehen — alter Key hing am Gratis-Projekt). `TTS_BACKEND=gemini`, Orus.
+- **Oswald-Bold als Overlay-Font:** `assets/fonts/Oswald-Bold.ttf` (googlefonts, OFL) → Dockerfile kopiert
+  nach `/usr/share/fonts/truetype/custom/`; `core/render.py:_font()` bevorzugt Oswald, DejaVu-Fallback.
+  Hinweis: Overlays laufen über **Pillow**, nicht ffmpeg drawtext.
+
+### Erstmals durchgetestet: Render + Publish (die letzten „nie gelaufen"-Stufen)
+- **Render:** Ahlen-Fall `2a71fe18` → valides MP4 1080×1920 (9:16), H.264+AAC, ~92 s Renderzeit.
+- **Publish:** Download-URL + Caption + Hashtags + 3 Titel-Vorschläge aus spec.meta; Alter-Gate greift korrekt.
+- **Erster Clip mit echtem B-Roll:** 5 Higgsfield-Clips (je 1/Kategorie) über /broll hochgeladen,
+  Pools in `core/script.py` temporär auf **1** (→ bei mehr Clips wieder erhöhen!), Fall mit
+  **Gemini/Orus neu vertont** (Guardrail-Sprache im Voiceover) und gerendert — Vertical Slice OK.
+
+### Prompt-Generator im Leitstand (User-Wunsch: „ins Programm einbauen")
+- **`core/broll_prompts.py`** = Single Source of Truth. Fixe Blöcke als Konstanten (NIE umformulieren):
+  `KAMERA_FIX`, `STIL_FIX`, `AUTOMAT_FIX` (der echte weiß-blaue dt. Automat von den User-Fotos).
+  Auswahl-Dicts: BELEUCHTUNG/ZUSTAND/UMFELD/KAMERABEWEGUNG/SUBJEKT. `build_prompt()` + Master-Presets
+  (`master_automat_neu/gesprengt`, isoliert) + **Kategorie-Presets** (je broll-Kategorie 1 Klick,
+  passend zur Szenen-Rolle, mit Upload-Hinweis auf `broll_<kat>_NN.mp4`).
+- **UI auf /broll:** Dropdowns + Master-/Kategorie-Buttons + Copy-Button
+  (`GET /broll/prompt`, `partials/prompt_out.html`). Automat-Block byte-identisch in jedem Prompt (getestet).
+- **Gelernte Fixes (in den fixen Blöcken verankert):**
+  1. **Größe:** ohne Maße erzeugt die KI US-Standautomaten → `AUTOMAT_FIX` erzwingt „SMALL, COMPACT
+     wall-mounted, ~80×90 cm, chest height, NEVER touches the ground".
+  2. **Schreibfehler:** KI kann keinen Text → `STIL_FIX` mit STRICT TEXT RULE (nur ACHTUNG/ab 18/POLIZEI
+     lesbar, alles andere unscharf; Marken-Tasten nur über Packungsfarben, keine lesbaren Namen).
+- `broll_prompts.md` = Archiv; Quelle ist der Generator.
+- **Higgsfield-MCP** eingerichtet (`claude mcp add --transport http --scope user higgsfield
+  https://mcp.higgsfield.ai/mcp`) — **OAuth via /mcp noch offen**.
+
+### Nächste Schritte (Reihenfolge)
+1. Master-Bild „Automat NEU" in Higgsfield festlegen (Generator-Preset) → Anker für Bild→Video.
+2. B-Roll-Bibliothek füllen (3–4 Clips/Kategorie über Kategorie-Presets) → Pools in `core/script.py` hochsetzen.
+3. Overlay-Redesign (User: „Katastrophe"; Design soll via Higgsfield entstehen — Karten-Kreis entfernen).
+4. Fakten-bewusster Render (B-Roll passend zum Fall-Text: E-Roller ≠ Auto; Zigaretten- vs. Geldautomat).
+5. Geldautomat als zweiter fester Block (`AUTOMAT2_FIX`) + eigenes Masterbild.
+6. Publish: Multi-Plattform-Textvorschläge (YT-Tags vs. TikTok/Reels-Hashtags) → dann 10-Shorts-Meilenstein.
+
+## Update 2026-07-30 (Alert „Geldautomat Sprengung" wurde nie abgeholt · Datumsformat · Statusband)
+
+**1. Google-Alert „Geldautomat Sprengung" kam nie an (Fehler gefunden).**
+`ALERT_SUBJECT_FILTER` war ein **einzelner** Begriff (`zigaretten`) und wurde zweifach
+angewandt: als IMAP-`SUBJECT`-Kriterium und als Gegenprobe im Code. Der Betreff
+„Google Alert – Geldautomat Sprengung" enthält dieses Wort nicht → die Mail wurde
+serverseitig gar nicht erst gefunden. Der Treffer-Filter `ALERT_TOPIC_KEYWORDS`
+kannte `geldautomat` zwar längst, kam aber nie zum Zug.
+→ `core/mail.py`: `ALERT_SUBJECT_FILTERS` ist jetzt eine **kommagetrennte Liste**
+(ein Treffer genügt). Neuer Helfer `_subject_criteria()` baut das geschachtelte
+IMAP-`OR` (`OR SUBJECT "a" SUBJECT "b"`), `matches_subject()` die Gegenprobe.
+`.env`: `ALERT_SUBJECT_FILTER=zigaretten,geldautomat`.
+**Beleg:** Mail-Ingest 30.07. → 55 Kandidaten / 30 über Schwelle / **15 neu angelegt**,
+davon **13 mit Geld-/Bankautomat** (u. a. Glinde Score 90, Fürth 75). Vorher: 0.
+Nebenbefund aus der Fehler-Queue: der letzte echte Mail-Lauf (25.07.) war zusätzlich
+an `IMAP4.error: Invalid credentials` gescheitert — mit dem inzwischen eingetragenen
+App-Passwort läuft er sauber durch.
+
+**2. Datumsformat TT.MM.JJJJ statt ISO.**
+Neue Jinja-Filter in `api/main.py`: `dt_de` (→ `30.07.2026 15:13`) und `datum_de`
+(nur Datum). Rechnen UTC→`TZ` (Europe/Berlin) um und reichen Unparsbares
+unverändert durch, statt zu knallen. Eingesetzt in `cases_table.html` (created_at),
+`case_detail.html` (facts.datum), `status_badge.html` (updated_at).
+`Dockerfile`: **tzdata** ergänzt — ohne die Zeitzonendatenbank konnte `zoneinfo`
+`Europe/Berlin` nicht auflösen und die UI hätte UTC (2 h daneben) gezeigt.
+
+**3. Statusband + kaputter Auto-Refresh.**
+Neu: `GET /partials/status` + `partials/statusbar.html` — Lampe (Bereit/arbeitet/
+Fehler), Queue-Chips je Stufe (laufend/wartend/fehlgeschlagen), Fallzahlen je
+Zustand (klickbar als Filter), „Stand HH:MM:SS". Pollt sich alle 5 s selbst.
+Redis- bzw. DB-Ausfall wird im Band gemeldet, statt das Dashboard mit 500 zu killen.
+**Bugfix dahinter:** Tabelle und Filter ersetzten `#cases-table-wrap` per
+`hx-swap="innerHTML"` — die Antwort enthält diesen Container aber selbst, also
+verschachtelte er sich bei jedem Durchlauf ineinander (doppelte IDs, Poller
+vervielfachten sich pro Zyklus). Jetzt durchgängig `hx-target="this"` +
+`hx-swap="outerHTML"`. Verifiziert: beide Partials liefern den Container genau 1×.
+
+## Update 2026-07-30 (TikTok-„Blacklist" geprüft und verworfen · Methoden-Sperre · Disclaimer)
+
+Anlass: `True_Crime_TikTok_Automaten_Guide.pdf` fordert eine „Blacklist für
+Shadowban-Vermeidung" — „gesprengt" → „detoniert / in die Luft gejagt",
+„Sprengstoff" → „**Gasgemisch / pyrotechnischer Satz**".
+
+**Die Blacklist wurde bewusst NICHT übernommen.** Begründung dokumentiert, damit
+das nicht alle drei Monate neu diskutiert wird:
+1. **Unbelegt.** TikTok-Wortfilter sind für **Kommentare** belegt (ARD-Test 2022:
+   19 von 100 Wortkombinationen unterdrückt), „Algospeak" ist in der Forschung
+   rund um Suizid/Sex/marginalisierte Gruppen dokumentiert — nicht bei
+   Kriminalitätsberichten. TikTok liefert zu „geldautomaten gesprengt" selbst
+   Suchergebnisse; deutsches True Crime hat >3 Mio. Beiträge.
+2. **Kontraproduktiv.** Verboten sind laut Richtlinien *Anleitungen zu
+   schädlichen Taten* und *Verherrlichung*. „Gasgemisch"/„pyrotechnischer Satz"
+   benennen die Methode **präziser** — die Ersetzung senkt ein eingebildetes
+   Risiko und erhöht das echte.
+3. **Widerspruch zur Strategie.** Der PDF-Systemprompt fordert „extrem
+   reißerisch"; Guardrail 4c legt sachlich-dokumentarischen Ton fest.
+
+**Stattdessen umgesetzt — Methoden-Sperre („Kategorie ja, Rezept nein"):**
+Das echte Loch war, dass `werkzeug` laut Prompt „Tatwerkzeug/**Vorgehen**"
+liefern sollte und `core/script.py` das wörtlich ausspricht („Mit {werkzeug}
+sollen die Täter vorgegangen sein"), ebenso das freie Feld `details`.
+- **`core/parse.py`** (neu, passend zu „reine Regex, kein I/O"): `_METHODE_RE`,
+  `hat_methode()`, `entschaerfe_methode()`. Gesperrt sind Stoffarten
+  (Gasgemisch, Butan, Propan, Schwarzpulver …), Mengen, Zuführung
+  („über einen Schlauch eingeleitet"), Zündmechanismen. **Erlaubt bleiben**
+  „gesprengt", „Sprengung", „Sprengsatz", „Explosion", „Winkelschleifer" —
+  das ist Kategorie, keine Anleitung.
+  Wichtig: entfernt wird der **ganze Satz**, kein `[entfernt]`-Platzhalter —
+  die Felder landen im Voiceover, die TTS würde den Platzhalter vorlesen.
+- **`core/extract.py`**: neue harte Prompt-Regel + Aufruf in `sanitize()`.
+  `werkzeug` wird jetzt als *Gegenstand* angefordert („einem Sprengsatz"), nicht
+  als Vorgang — sonst entsteht „Mit Sprengung sollen die Täter vorgegangen sein".
+- **`workers/extract.py`**: erkennt vor dem Säubern, ob Methoden-Details da
+  waren, und hängt „Methoden-Details entfernt" an die `warnung` (⚠ im Review).
+- **`core/script.py`**: zweites Gate in `build_spec()` → **Bestandsfälle sind
+  ohne erneuten Claude-Lauf abgedeckt.**
+
+**Disclaimer** (die brauchbare Idee aus der PDF): neue Konstante `DISCLAIMER` in
+`core/script.py`, hängt an `spec.meta.caption` und läuft über
+`workers/publish.py` auf alle Plattformen mit — „sachliche Dokumentation auf
+Basis offizieller Polizeimeldungen, Unschuldsvermutung, Nachahmung strafbar".
+
+**Nachgezogen (gleicher Tag, beide aus dem Live-Test entstanden):**
+
+1. **`[entfernt]`-Platzhalter beseitigt.** `sanitize()` ersetzte Straßen/PLZ in
+   `details`/`werkzeug`/`tat` durch `"[entfernt]"` — die TTS hätte das wörtlich
+   vorgelesen („eckige Klammer entfernt"). Jetzt greift dieselbe satzweise Logik
+   wie bei den Methoden-Details: neuer generischer Helfer
+   `core.parse.drop_saetze(text, muster)`, den sowohl `entschaerfe_methode()`
+   als auch das neue Sammelmuster `_PII_RE` (Koordinaten/PLZ/Straße) nutzen.
+   Im `ort`-Feld bleibt es beim Herausschneiden der Fragmente — das ist kein
+   gesprochener Satz, sondern ein Stadtname.
+2. **Unschuldsvermutung abgesichert.** Die Distanz steckte bisher NUR im
+   Vorspann der werkzeug-Zeile („sollen … vorgegangen sein"). Fällt die weg —
+   kein Werkzeug bekannt oder vom Methoden-Filter entfernt — und formuliert
+   Claude in `details` assertiv, ging der ganze Text als Tatsachenbehauptung
+   raus. Neu in `core/script.py`: `_DISTANZ_RE` + `_distanz_fehlt()`; fehlt im
+   erzählenden Teil (eskalation + story) jede Distanzierung, wird
+   „Nach bisherigen Erkenntnissen sollen … für die Tat verantwortlich sein."
+   ergänzt. Ist schon Distanz da, passiert nichts (keine Dopplung).
+   **Wichtig:** „unbekannte Täter", „Ermittlungen" und „Zeugen" zählen bewusst
+   NICHT als Distanz — „Zwei unbekannte Täter sprengten …" behauptet die Tat
+   weiterhin als Tatsache. Genau dieser Fall war im ersten Anlauf durchgerutscht.
+
+3. **Konjunktiv-Regel im Extract-Prompt verschärft.** Die alte Regel nannte
+   ausgerechnet „unbekannte Täter" als zulässiges Distanzierungsmittel — Claude
+   hat also mit „Zwei unbekannte Täter sprengten …" korrekt den Prompt befolgt.
+   **Der Prompt selbst hat das falsche Muster beigebracht.** Neu: nur „sollen …
+   haben/sein", „mutmaßlich" und „angeblich" gelten; „unbekannt" allein wird
+   ausdrücklich als NICHT ausreichend bezeichnet. Dazu zwei FALSCH/RICHTIG-
+   Beispielpaare und die Klarstellung, dass Sätze ohne handelnde Personen
+   (Schäden, Behörden-Handeln) im Indikativ bleiben.
+   **Wirkung (2 Fälle live):** `details` steht jetzt durchgängig im Konjunktiv,
+   Schadenssätze bleiben normal — der Fallback-Satz aus Punkt 2 wurde in beiden
+   Fällen nicht mehr gebraucht. Er bleibt als Netz für Ausreißer bestehen.
+
+4. **Werkzeug-Satz stapelt kein „sollen" mehr.** `_line_story()` hat jetzt zwei
+   Varianten, gesteuert über `distanz_vorhanden`: Steht `details` schon im
+   Konjunktiv, kommt agentloses Passiv („Mit einem Sprengsatz wurde offenbar
+   vorgegangen.") — ohne handelnde Personen ist das keine Schuldbehauptung.
+   Nur wenn `details` assertiv ist, trägt der Werkzeug-Satz die Distanzierung
+   selbst („… sollen die unbekannten Täter vorgegangen sein."). Alle vier
+   Kombinationen (details distanziert/assertiv × werkzeug ja/nein) getestet,
+   in jeder ist genau eine Distanzquelle aktiv.
+
+5. **0-Euro-Bug in `_line_zahlen()` gefixt.** Die Funktion prüfte nur auf
+   `None`, behandelte `0` also wie einen echten Betrag → „Die Beute wird auf
+   rund **0 Euro** geschätzt." (real aufgetreten in Fürth: Täter kamen nicht an
+   die Kassetten, Claude lieferte korrekt `beute_eur=0`). `0` ist eine AUSSAGE,
+   kein fehlender Wert — jetzt durchgehend `is not None` plus eigene Texte
+   („Beute wurde keine gemacht." / „Nennenswerter Sachschaden entstand nicht.").
+   Alle 8 Kombinationen aus beute/schaden × {Wert, 0, None} getestet, die vier
+   bisherigen Ausgaben unverändert. Neuer Helfer `_eur()` formatiert den
+   Tausenderpunkt, damit `.replace(",", ".")` nicht mehr über ganze Sätze läuft.
+
+**Beleg (Glinde, Score 90, live durchgelaufen bis `review`):** Claude lieferte
+`werkzeug="Festsprengstoff"` → gefiltert auf `None`, ⚠-Warnung gesetzt,
+Voiceover ohne Methoden-Detail, ohne Platzhalter, mit Distanz-Satz, `voice.mp3`
+erzeugt. (Der erste Regex-Entwurf kannte nur „Feststoffsprengstoff" —
+Typ-Bezeichnungen werden jetzt generisch über `\w+sprengstoff` erfasst, das
+blanke „Sprengstoff" bleibt erlaubt.)
+
+## Update 2026-07-30 (Lektor-Stufe: Sprechtexte glätten + Lesbarkeits-Ampel)
+
+Anlass: Die Texte waren fachlich korrekt, aber schwer hörbar — Schachtelsätze,
+Semikolons, Wortwiederholungen, gelegentlich Tippfehler des Modells
+(„ein kleineres Feuer gelösch; es ist jedoch nicht einsturzgefährdet").
+
+**Neues Modul `core/lektor.py`** — zwei Funktionen, beide ohne Seiteneffekt:
+- `lesbarkeit(text)` → Wiener Sachtextformel (Schulstufe) + konkrete Marker
+  (Satz > 20 Wörter, Semikolon, Mehrfach-Nebensätze, Wortwiederholung ≥ 3×).
+  Reine Funktion, keine neue Abhängigkeit (Silben über Vokalgruppen genähert).
+- `lektoriere(scenes)` → **ein** Claude-Aufruf (Haiku) für alle Szenen, damit
+  der Lektor den Zusammenhang sieht. Prompt: kurze Hauptsätze, kein Semikolon,
+  keine Relativsatzketten, Tippfehler raus, **Straffen erlaubt** — Kernfakten
+  (Ort, Zeit, Tat, Beute, Schaden, Fahndung) sind Pflicht.
+
+**Der Lektor kann die Guardrails nicht aushebeln.** Jeder Vorschlag läuft durch
+`extract.pruefe_text()` (Adresse/PLZ/Koordinaten, Methoden-Details) und
+`parse.distanz_fehlt()`. Fällt er durch, wird er **verworfen** — die Szene
+behält ihren Originaltext, der Grund steht in der UI. Mit gefälschten Antworten
+verifiziert: Distanzverlust, Methoden-Detail und Adresse werden alle drei
+abgefangen, nur der saubere Vorschlag geht durch.
+
+**Vorarbeit (geteilte Prüfungen):** `_DISTANZ_RE`/`_distanz_fehlt` aus
+`core/script.py` nach `core/parse.py` verschoben und als `distanz_fehlt()`
+öffentlich gemacht (dort wohnen die reinen Textregeln); neue
+`extract.pruefe_text(text) -> list[str]` bündelt PII- und Methoden-Prüfung.
+
+**Bedienung — nie automatisch.** Button „Text glätten (Lektor)" auf der
+Fall-Seite. Das Ergebnis ist ein Vorher/Nachher-Panel mit Ampel auf beiden
+Seiten. Das Panel ist **selbst ein Formular auf das bestehende `/retts`**
+(Textareas vorbelegt und weiter editierbar, `caption` unverändert als hidden
+input) — kein neuer Speicher-Endpunkt, kein JavaScript, kein neuer Zustand.
+Absenden = speichern + neu vertonen wie gehabt. Zusätzlich zeigt jede Szene im
+normalen Skript-Formular ihre Lesbarkeits-Ampel (Tooltip nennt die Marker).
+
+**Beleg (Fürth-Fall, live):** Problemszene vorher **13,5 „schwer"** → nachher
+**10,6 „mittel"**; Gesamttext nach Übernahme **7,7 „gut"**. Semikolon weg,
+„gelösch" korrigiert, der Amsterdam-Schachtelsatz in zwei Sätze aufgelöst,
+Konjunktiv überall erhalten, `voice.mp3` neu erzeugt. Drei bereits saubere
+Szenen wurden korrekt als „unverändert" gemeldet.
+
+**Grenzen, bewusst so:** Der Lektor ist nicht deterministisch — zwei Läufe auf
+denselben Text liefern leicht unterschiedliche Vorschläge. Deshalb Vorschlag
+statt Automatik. Die Marker melden weiterhin „sollen 3× wiederholt": Das ist
+der Preis der Unschuldsvermutung und kein Fehler. Beim Straffen kann es zu
+leichter Umdeutung kommen (im Test wurde aus „Bankfiliale im Erdgeschoss eines
+Wohnhauses" ein „Wohnhaus mit Erdgeschoss-Laden") — deshalb steht das
+Vorher/Nachher nebeneinander und wird gegengelesen.
+
+## Update 2026-07-30 (Formregeln im Extract-Prompt — Ursache statt Symptom)
+
+Erkenntnis aus dem Lektor-Einsatz: Alle Lesbarkeitsprobleme entstehen bei der
+**Extraktion**, nicht danach. Der Prompt schrieb Claude bisher nur vor, *was* in
+`details` stehen soll (Fakten, Konjunktiv, keine Methode) — nichts über die
+*Form*. Neuer Abschnitt **SPRECHBARKEIT** im Prompt (`core/extract.py`):
+kurze Hauptsätze, ein Gedanke pro Satz, max. ~20 Wörter, **kein Semikolon und
+kein Gedankenstrich** (beim Hören nicht wahrnehmbar), keine angehängten
+Relativsatz-Ketten — mit Gegenbeispiel. Feld-Beschreibung von „1-2 Sätze" auf
+„2-4 kurze Sätze zum VORLESEN" geändert. Kostet nichts, ist deterministisch
+verfügbar und greift bei jedem Fall, statt pro Klick einen Lektor-Aufruf.
+
+**Wirkung (beide Testfälle neu extrahiert):**
+- Fürth (der Problemfall): Semikolon und Gedankenstrich **weg**, Tippfehler weg,
+  Voiceover gesamt **8,8** — vorher hatte eine einzelne Szene 13,5 „schwer".
+  Ohne einen einzigen Lektor-Klick.
+- Glinde: **keine Marker mehr**, Voiceover 9,0.
+
+**Nicht vollständig gelöst:** Fürth enthält weiter einen 21-Wort-Satz mit genau
+der Relativsatz-Kette, die im Prompt als Gegenbeispiel steht („…geflüchtet sein,
+das später in Amsterdam …"). Der Konjunktiv verlängert Sätze zwangsläufig
+(„geflüchtet sein, das … gewesen sein soll"). Genau dafür bleibt der Lektor als
+Werkzeug für Ausreißer sinnvoll — er ist jetzt Ausnahme statt Regel.
+
+**Nachgezogen: Konjunktiv-Bruch.** Claude mischte in einem Satz Konjunktiv und
+Indikativ — „Sie sollen Geldkassetten mitgenommen und **sind** mit Fahrrädern
+geflüchtet." Der zweite Teilsatz war damit wieder assertiv, und `distanz_fehlt()`
+schlug nicht an, weil „sollen" ja im selben Satz steht.
+- **Prompt:** neue Regel „Der Konjunktiv gilt bis zum Satzende — auch in
+  angehängten Teilsätzen nach *und*" mit FALSCH/RICHTIG-Paar.
+- **Prüfung** (nach dem etablierten Muster Prompt + harte Kontrolle + Warnung):
+  `parse.konjunktiv_bruch()` erkennt „soll(en) … und {sind|ist|hat|haben|war|
+  waren|wurde|wurden}" satzweise; `workers/extract.py` hängt daraus die Warnung
+  „Konjunktiv bricht im Satz ab" ans ⚠-Flag. **Bewusst keine Auto-Korrektur** —
+  Grammatik per Regex umzubauen ist nicht sicher, der Mensch formuliert nach.
+
+**Endstand beider Testfälle nach Form- + Konjunktiv-Regeln (frisch extrahiert):**
+- Glinde: „Sie sollen Geldkassetten mitgenommen und auf Fahrrädern geflüchtet
+  **sein**." → Bruch behoben, Voiceover **7,8 „gut"**, keine Marker.
+- Fürth: die Relativsatz-Kette ist weg, Claude macht daraus einen eigenen Satz
+  („Das mutmaßliche Fluchtauto soll später in Amsterdam …"). Voiceover **8,9**,
+  keine Marker — vorher hatte eine einzelne Szene 13,5 „schwer".
+Damit ist der Lektor endgültig Ausnahme- statt Regelwerkzeug.
+
+## Update 2026-07-30 (Ende der „sollen"-Party — Distanzierung mit Abwechslung)
+
+Rückmeldung des Nutzers zum Text: drei „sollen" in vier Sätzen. **Ursache war
+meine eigene Prompt-Regel**, die ausdrücklich vorschrieb: „Zulässig sind NUR
+diese drei Mittel: sollen / mutmaßlich / angeblich." Damit war die Wiederholung
+erzwungen. Deutsche Kriminalberichterstattung hat deutlich mehr Register.
+
+**Neu im Prompt** — Palette statt Zwang, mit Abwechslungspflicht („sollen"
+höchstens EINMAL pro details-Text, nie zweimal dasselbe Mittel hintereinander):
+Konjunktiv I der indirekten Rede („hätten gesprengt", „seien geflüchtet"),
+„sollen", „mutmaßlich"/„Tatverdächtige", Quellenzuschreibung („laut Polizei",
+„nach Angaben der Ermittler", „den Ermittlern zufolge"), „angeblich"/„offenbar"
+— und als beste Lösung, wo möglich: **Satz ganz ohne handelnde Person**
+(„Der Geldautomat wurde gesprengt.") Ohne Täter-Subjekt gibt es nichts zu
+behaupten und nichts zu distanzieren. Dazu ein Musterbeispiel mit vier Sätzen
+und vier verschiedenen Mitteln.
+
+**`parse._DISTANZ_RE` entsprechend erweitert** — sonst hätte die Distanz-Prüfung
+die neuen Formen als fehlende Distanz missverstanden und den Fallback-Satz
+gefeuert: Konjunktiv I (hätte/hätten/sei/seien/wäre/wären/habe),
+„laut <Behörde>", „nach Angaben/Erkenntnissen", „zufolge", „offenbar".
+Acht Positiv- und drei Negativfälle getestet.
+
+**Wirkung (drei Fälle neu extrahiert):** „sollen" von 3× auf **0×, 0×, 1×**.
+Beispiel Glinde: „In der Nacht zu Montag **wurde** ein Geldautomat gesprengt.
+**Nach Angaben von Zeugen hätten** zwei Männer … die Flucht ergriffen." —
+Passiv, Quellenzuschreibung und Konjunktiv I in zwei Sätzen.
+
+**Zwei ehrliche Nebenwirkungen:**
+1. **Die Lesbarkeitswerte STIEGEN** (Fürth 8,9 → 11,8; Bergstraße 13,3), obwohl
+   der Text besser klingt. Grund: Die Wiener Sachtextformel bestraft lange
+   Wörter, und „Nach bisherigen Erkenntnissen" ist nun mal länger als „sollen".
+   Die Formel ist für geschriebene Prosa gemacht und straft deutsche Komposita
+   generell ab. **Konsequenz: Die Marker sind für Sprechtexte das verlässlichere
+   Signal als die Zahl** — sie blieben hier leer. Die Zahl bleibt als grober
+   Trend nützlich, taugt aber nicht als Zielgröße.
+2. Claude baut vereinzelt schwerfällige Konstruktionen („gelang es den Tätern
+   nicht, … zu gelangen"). Dafür ist der Lektor da.
+
+**Der Konjunktiv-Detektor hat sich im Echtbetrieb bewährt:** Bergstraße kam mit
+„… sollen die Sprengung durchgeführt haben **und sind** anschließend geflüchtet"
+zurück — Warnung „Konjunktiv bricht im Satz ab" steht am Fall. Die Prompt-Regel
+allein reicht also nicht, die harte Prüfung fängt den Rest.
+
+## Update 2026-07-30 (Unschuldsvermutung korrigiert — sie schützt Personen, nicht Ereignisse)
+
+Einwand des Nutzers: „Unbekannte Täter **sollen** einen Geldautomaten gesprengt
+haben" sei falsch — sie haben es ja getan, sonst gäbe es die Meldung nicht.
+**Der Einwand ist berechtigt.** Beleg aus dem eigenen `fulltext` des
+Bergstraße-Falls (Originalquelle, Medium zitiert die Polizei):
+
+> „In Fürth ist der Geldautomat … von Unbekannten **gesprengt worden**. Die
+> Täter **sind** flüchtig. […] Unbekannte Täter **machten sich** an dem
+> Automaten zugange."
+
+Kein einziger Konjunktiv. Wir formulierten also vorsichtiger als die Quelle,
+aus der wir zitieren.
+
+**Die Trennlinie, die vorher fehlte:**
+- **Die Tat** (dass gesprengt wurde) ist Tatsache → **Indikativ**.
+- **Die Täterschaft** ist das Angreifbare — und nur, wenn jemand IDENTIFIZIERT
+  ist. Bei unbekannten/flüchtigen Tätern existiert keine Person, die
+  vorverurteilt werden könnte → **Indikativ ist korrekt** (so schreiben Polizei
+  und Presse selbst).
+- **Distanz Pflicht**, sobald jemand festgenommen/benannt ist („der 24-Jährige",
+  „die Festgenommenen") — dort greift die Unschuldsvermutung wirklich.
+- **Distanz auch**, wenn der Hergang selbst unsicher ist (nur Zeugenangaben).
+
+**Umgesetzt, gesteuert über das vorhandene `facts.ungeloest`:**
+- `core/extract.py`: Prompt-Block (A)/(B) mit den drei Fällen und je einem
+  Musterbeispiel für „unbekannte Täter" (Indikativ) und „identifiziert" (Distanz).
+- `core/script.py`: `_line_story()` hat jetzt drei Varianten — bei `ungeloest`
+  Indikativ („Mit einem Sprengsatz gingen die unbekannten Täter vor."), sonst wie
+  bisher. Der Fallback-Satz feuert **nur noch bei identifizierten Personen**.
+- **Loch dabei gefunden und geschlossen:** Der Fallback prüfte Eskalations- und
+  Story-Zeile ZUSAMMEN — ein „sollen" aus der Werkzeug-Zeile verdeckte damit eine
+  Schuldbehauptung wie „Der Festgenommene sprengte den Automaten." Jetzt wird
+  **je Zeile** geprüft.
+- `workers/extract.py`: neue Warnung „Beschuldigter benannt, aber Text ohne
+  Distanz — Unschuldsvermutung prüfen!". Automatisch reparieren lässt sich das
+  nicht (der assertive Satz bliebe stehen), hier muss der Mensch ran.
+
+**Beleg (Bergstraße neu extrahiert, ungeloest=true):** „Ein Geldautomat in einer
+Bankfiliale **wurde** am frühen Dienstagmorgen gesprengt. Unbekannte Täter
+**flüchteten** vom Tatort, eine umfangreiche Fahndung **läuft**." — **0× „sollen"**,
+kein Fallback-Zusatz, keine Warnung. Register identisch zur Quelle.
+
+## ⚠️ Gemini-TTS: 100 Anfragen pro Tag (2026-07-30 aufgelaufen)
+
+Beim Testen erschöpft: `generate_requests_per_model_per_day, limit: 100,
+model: gemini-2.5-flash-tts` → 429 RESOURCE_EXHAUSTED, Reset nach ~3 h.
+**Die Billing-Notiz vom 26.07. ist damit unvollständig:** Das 3/Min- und das
+10/Tag-Limit des Gratis-Tiers sind weg, ein **Tageslimit von 100 Anfragen
+bleibt**. Ein Clip = 1 Anfrage je Szene (≈ 5) → rund **20 Vertonungen pro Tag**.
+Für 3 Clips/Woche reichlich; beim Iterieren am Text (jedes „neu vertonen" zählt
+voll) ist es schnell weg. Bei Bedarf `TTS_BACKEND=edge` als Ausweichstimme.
+
 ## Bekannte Punkte / TODO
-- **Gemini-TTS Gratis-Tages-Quota = 10 Requests/Tag** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`,
-  Modell `gemini-2.5-flash(-preview)-tts`). Jede **Szene = 1 Request** → ~10 Szenen/Tag, reicht kaum für
-  **einen** Clip. Ist das Tageslimit erschöpft, schlägt TTS mit `429 RESOURCE_EXHAUSTED` fehl (der
-  `retryDelay`-Backoff hilft NICHT, ein Tageslimit läuft nicht in Sekunden zurück) → Fall bleibt
-  `in_analyse` mit `error=tts: … 429`. **Neben** dem Minuten-Limit (3 Req/Min). Auswege:
-  (a) **`TTS_BACKEND=edge`** in `.env` + `docker compose up -d` — gratis, sofort, kein Limit, aber monotonere
-  Stimme; (b) **Google-Billing** aktivieren — hebt das Limit auf, Orus-Stimme bleibt; (c) bis zum täglichen
-  Reset warten (unpraktisch bei mehreren Szenen).
-- **B-Roll-Bucket leer** → Render nutzt Farb-Kulissen, bis echte Higgsfield-Clips über die
-  `/broll`-Seite hochgeladen sind (gleiche Namen `broll_<kategorie>_NN.mp4`).
+- ~~Gemini-TTS Gratis-Quota~~ **GELÖST (2026-07-26): Google-Billing aktiv** (5/5 Burst-Test ohne 429).
+  Historie: Gratis-Tier hatte 10 Req/Tag + 3 Req/Min; `TTS_BACKEND=edge` bleibt als Notfall-Fallback.
+- **B-Roll-Bibliothek unvollständig:** 5 Test-Clips (je 1/Kategorie) im Bucket; Pools in `core/script.py`
+  stehen temporär auf **1** — beim Füllen der Bibliothek (3–4/Kategorie via Prompt-Generator) wieder erhöhen.
 - **Ingest langsam** (~270 Dienststellen sequenziell, ~3 min) → später Threading/Limit.
 - **Worker leeren `error`-Feld nicht bei Erfolg** (kosmetisch; Badge bleibt sonst stehen).
-- **Noch nicht durchgetestet:** Render („Clip bauen"), Publish, VPS-Deploy (`deploy/DEPLOY.md`).
+- ~~Render/Publish nie getestet~~ **GELÖST (2026-07-26): beide end-to-end verifiziert.** Offen bleibt nur der VPS-Deploy (`deploy/DEPLOY.md`).
+- **Overlay-Redesign offen** (Design via Higgsfield) · **fakten-bewusster Render offen** (B-Roll ↔ Fall-Text).
 - **Fotos aus Artikeln:** bewusst NICHT genutzt (Urheberrecht + PII-Risiko) — B-Roll/KI bleibt.
 - Alte themenfremde Fälle (vor dem Filter) wurden auf `verworfen` gesetzt, nicht gelöscht.
 
