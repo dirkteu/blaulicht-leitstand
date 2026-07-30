@@ -22,6 +22,10 @@ SIGNALS = [
     # Automaten-Sprengungen ueber die Schwelle, ohne banalen Zigaretten-
     # Ladendiebstahl (ohne Automat) mit hochzuziehen.
     (r"zigaretten[- ]?automat|tabakautomat|zigarettenautomat",         15, "🚬 Zigarettenautomat"),
+    # Zweite Kern-Nische: Geldautomaten-Sprengung. Hebt die Geldautomaten-Faelle
+    # analog ueber die Schwelle (die reine „gesprengt"-Signalgebung reicht, dieser
+    # Bonus macht die Nische im Score sichtbar/robust).
+    (r"geldautomat|bankautomat|ec-automat|sb-terminal",                15, "🏧 Geldautomat"),
     (r"schaufenster|kracht.{0,15}(laden|gesch|schaufenster|juwel)|"
      r"(auto|pkw|wagen|mercedes).{0,20}(rammt|fuhr|kracht|schaufenster)", 25, "🚗 Schaufenster-Crash"),
     (r"messer|schusswaffe|bewaffnet|pistole|waffe|schüsse|erschoss|geschossen",

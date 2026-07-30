@@ -56,13 +56,21 @@ from . import presseportal
 # Absender aller Google-Alert-Mails.
 GOOGLE_ALERT_SENDER = "googlealerts-noreply@google.com"
 
-# NUR Alerts zu diesem Thema verarbeiten (Teilstring im Betreff, z. B. das
+# NUR Alerts zu diesen Themen verarbeiten (Teilstring im Betreff, z. B. das
 # Wort im Betreff „Google Alert – zigarettenautomat gesprengt"). Es gibt i. d. R.
 # mehrere Alert-Themen im Postfach (Einbruch, Überfall, …) — ohne diesen Filter
-# wuerden ALLE abgeholt. Ueber ENV ALERT_SUBJECT_FILTER aenderbar; leer = alle.
-# Ein Wort deckt hier beide Zigaretten-Alerts ab („zigarettenautomat gesprengt"
-# und „diebstahl zigaretten" enthalten beide „zigaretten").
-ALERT_SUBJECT_FILTER = os.environ.get("ALERT_SUBJECT_FILTER", "zigaretten").strip()
+# wuerden ALLE abgeholt.
+#
+# KOMMAGETRENNTE LISTE (ENV ALERT_SUBJECT_FILTER), es genuegt EIN Treffer:
+# „zigaretten" deckt beide Zigaretten-Alerts ab („zigarettenautomat gesprengt"
+# und „diebstahl zigaretten"), „geldautomat" den Alert „Geldautomat Sprengung".
+# Frueher war das ein einzelner Begriff — dadurch fielen alle Alerts durchs
+# Raster, die dieses eine Wort nicht im Betreff hatten. Leer = alle Alerts.
+ALERT_SUBJECT_FILTERS = [
+    s.strip()
+    for s in os.environ.get("ALERT_SUBJECT_FILTER", "zigaretten,geldautomat").split(",")
+    if s.strip()
+]
 
 # Zusaetzlicher Themen-Filter je EINZELNEM Treffer: Google packt in eine
 # Zigaretten-Alert-Mail teils lose verwandte Artikel (Einbruch, EC-Karten …).
@@ -72,7 +80,7 @@ ALERT_SUBJECT_FILTER = os.environ.get("ALERT_SUBJECT_FILTER", "zigaretten").stri
 # leer = kein Treffer-Filter (dann zaehlt nur der Betreff-Filter oben).
 ALERT_TOPIC_KEYWORDS = [
     k.strip().lower()
-    for k in os.environ.get("ALERT_TOPIC_KEYWORDS", "zigaret,tabak,kippen,raucherwaren").split(",")
+    for k in os.environ.get("ALERT_TOPIC_KEYWORDS", "zigaret,tabak,kippen,raucherwaren,geldautomat,bankautomat,ec-automat").split(",")
     if k.strip()
 ]
 
@@ -97,6 +105,33 @@ def _imap_since_date(days: int) -> str:
     """Datum vor `days` Tagen im IMAP-Format 'DD-Mon-YYYY' (z. B. 11-Jul-2026)."""
     d = datetime.now() - timedelta(days=days)
     return f"{d.day:02d}-{_IMAP_MONTHS[d.month - 1]}-{d.year}"
+
+
+def _subject_criteria(terms: list[str]) -> list[str]:
+    """IMAP-Suchkriterium „Betreff enthaelt EINEN der Begriffe".
+
+    IMAP kennt kein IN, nur das praefix-notierte `OR <a> <b>` fuer je ZWEI
+    Ausdruecke — mehrere Begriffe werden daher geschachtelt:
+        1 Begriff : SUBJECT "a"
+        2 Begriffe: OR SUBJECT "a" SUBJECT "b"
+        3 Begriffe: OR OR SUBJECT "a" SUBJECT "b" SUBJECT "c"
+    Begriffe werden gequotet, damit auch mehrwortige funktionieren.
+    """
+    if not terms:
+        return []
+    crit = ["SUBJECT", f'"{terms[0]}"']
+    for t in terms[1:]:
+        crit = ["OR"] + crit + ["SUBJECT", f'"{t}"']
+    return crit
+
+
+def matches_subject(subject: str) -> bool:
+    """True, wenn der Betreff einen der konfigurierten Begriffe enthaelt
+    (Gegenprobe zur IMAP-Suche). Leere Liste = alles durchlassen."""
+    if not ALERT_SUBJECT_FILTERS:
+        return True
+    s = (subject or "").lower()
+    return any(t.lower() in s for t in ALERT_SUBJECT_FILTERS)
 
 # Ab so vielen Zeichen gilt ein gefetchter Volltext als brauchbar; sonst
 # faellt fetch_candidates auf den Snippet zurueck (Scoring-Text).
@@ -259,8 +294,7 @@ def fetch_candidates(mark_seen: bool = True) -> list[dict[str, Any]]:
         # ueber die Link-Deduplizierung in core.supa.insert_case (on_conflict).
         # Lese-Markierungen im Postfach werden nicht angefasst.
         criteria = ["FROM", GOOGLE_ALERT_SENDER]
-        if ALERT_SUBJECT_FILTER:
-            criteria += ["SUBJECT", ALERT_SUBJECT_FILTER]
+        criteria += _subject_criteria(ALERT_SUBJECT_FILTERS)
         if ALERT_MAX_AGE_DAYS > 0:
             criteria += ["SINCE", _imap_since_date(ALERT_MAX_AGE_DAYS)]
         status, data = M.search(None, *criteria)
@@ -275,11 +309,9 @@ def fetch_candidates(mark_seen: bool = True) -> list[dict[str, Any]]:
             msg = email.message_from_bytes(msg_data[0][1])
 
             # Betreff-Gegenprobe (falls der IMAP-Server unscharf sucht): nur
-            # Alerts zum konfigurierten Thema durchlassen.
-            if ALERT_SUBJECT_FILTER:
-                subject = _decode_header(msg.get("Subject"))
-                if ALERT_SUBJECT_FILTER.lower() not in subject.lower():
-                    continue
+            # Alerts zu den konfigurierten Themen durchlassen.
+            if not matches_subject(_decode_header(msg.get("Subject"))):
+                continue
 
             results = extract_alert_results(_html_body(msg))
             if not results:

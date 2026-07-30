@@ -17,3 +17,7 @@ reservoir.json
 top_case.json
 _*.png
 _*.py
+
+# Lokale Render-/Test-Artefakte im Projektwurzelverzeichnis (nicht ins Repo)
+/*.mp4
+/*.png

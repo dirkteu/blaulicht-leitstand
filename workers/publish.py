@@ -19,6 +19,7 @@ NICHT aufgerufen, solange platform='download' (Default/MVP).
 
 from __future__ import annotations
 import os
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from core.contracts import Bucket, State
@@ -26,9 +27,41 @@ from core.supa import get_case, update_case, set_state, signed_url
 
 
 # ---------------------------------------------------------------------------
+# Guardrail: Mindest-Alter vor Veröffentlichung (Unschuldsvermutung /
+# Ermittlungs-Peak). Frische Taten NICHT sofort veröffentlichen. Steuerbar über
+# ENV MIN_PUBLISH_AGE_HOURS (Default 48 h; 0 = Gate aus). Alter = Tatdatum
+# (facts.datum), sonst created_at (Ingest ≈ Meldungszeitpunkt) als Näherung.
+# ---------------------------------------------------------------------------
+def _min_publish_age_hours() -> int:
+    try:
+        return int(os.environ.get("MIN_PUBLISH_AGE_HOURS", "48"))
+    except ValueError:
+        return 48
+
+
+def _parse_dt(value: Any) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt
+
+
+def _case_age_hours(case: dict[str, Any]) -> Optional[float]:
+    """Alter des Falls in Stunden, oder None wenn kein Datum bestimmbar."""
+    facts = case.get("facts") or {}
+    dt = _parse_dt(facts.get("datum")) or _parse_dt(case.get("created_at"))
+    if dt is None:
+        return None
+    return (datetime.now(timezone.utc) - dt).total_seconds() / 3600.0
+
+
+# ---------------------------------------------------------------------------
 # Hauptjob (RQ-Queue "publish")
 # ---------------------------------------------------------------------------
-def publish(case_id: str, platform: str = "download") -> dict[str, Any]:
+def publish(case_id: str, platform: str = "download", force: bool = False) -> dict[str, Any]:
     """Bereitet die Veröffentlichung eines fertigen Falls vor.
 
     MVP-Verhalten (platform="download", Default):
@@ -58,6 +91,20 @@ def publish(case_id: str, platform: str = "download") -> dict[str, Any]:
         # zurückmelden statt einen Fall ohne Clip als "veroeffentlicht" zu markieren.
         set_state(case_id, State.FERTIG.value, error="publish: kein video_url vorhanden")
         raise ValueError(f"Fall {case_id} hat keinen fertigen Clip (video_url fehlt)")
+
+    # Guardrail: Mindest-Alter (Ermittlungs-Peak/Unschuldsvermutung). Bewusster
+    # Override via force=True (z. B. späterer „Trotzdem veröffentlichen"-Button)
+    # oder MIN_PUBLISH_AGE_HOURS=0 in .env.
+    min_age = _min_publish_age_hours()
+    if not force and min_age > 0:
+        age = _case_age_hours(case)
+        if age is not None and age < min_age:
+            msg = (f"guardrail: Fall erst {age:.0f} h alt (< {min_age} h Mindestalter) "
+                   f"— Veröffentlichung während des Ermittlungs-Peaks blockiert. "
+                   f"In ~{min_age - age:.0f} h erneut versuchen, oder "
+                   f"MIN_PUBLISH_AGE_HOURS in .env senken.")
+            set_state(case_id, State.FERTIG.value, error=msg)
+            raise ValueError(msg)
 
     result: dict[str, Any] = {"platform": platform}
 
