@@ -33,12 +33,33 @@ def extract(case_id: str) -> None:
 
     try:
         fulltext = fetch_fulltext(case["link"])
-        facts = extract_facts(fulltext, case["link"])
-        facts = sanitize(facts)
+        roh = extract_facts(fulltext, case["link"])
+        # VOR dem Saeubern pruefen, ob Claude Methoden-/Anleitungs-Details
+        # geliefert hat — sanitize() entfernt sie, aber im Review soll sichtbar
+        # sein, dass etwas herausgefallen ist (Text kann dadurch knapper wirken).
+        methode_drin = any(parse.hat_methode(str(roh.get(f) or ""))
+                           for f in ("details", "werkzeug", "tat"))
+        facts = sanitize(roh)
         # Halluzinations-Check: Claudes Ort (aus dem Volltext) gegen den beim
         # Ingest aus dem Titel geparsten Ort. Bei Widerspruch -> Warnung setzen,
         # die im Review sichtbar wird. "" (kein Konflikt) leert eine evtl. alte.
-        warnung = parse.ort_conflict(case.get("ort", ""), facts.get("ort", ""))
+        warnungen = [parse.ort_conflict(case.get("ort", ""), facts.get("ort", ""))]
+        if methode_drin:
+            warnungen.append("Methoden-Details entfernt (Nachahmungs-Schutz) — Text bitte gegenlesen.")
+        # Konjunktiv-Bruch: Satz beginnt distanziert, faellt nach „und" in den
+        # Indikativ. Nur relevant, wenn jemand IDENTIFIZIERT ist — bei
+        # unbekannten Taetern ist der Indikativ ohnehin korrekt, dann waere die
+        # Warnung ein Fehlalarm. Wird NICHT automatisch korrigiert (Grammatik-
+        # Umbau per Regex ist nicht sicher) — der Mensch formuliert nach.
+        if not facts.get("ungeloest") and parse.konjunktiv_bruch(facts.get("details") or ""):
+            warnungen.append("Konjunktiv bricht im Satz ab (Unschuldsvermutung) — bitte nachziehen.")
+        # Rechtlich der ernste Fall: Es ist jemand identifiziert/gefasst, und der
+        # Text behauptet trotzdem ohne jede Distanz. Automatisch reparieren laesst
+        # sich das nicht (der assertive Satz bliebe stehen) — hier MUSS der Mensch
+        # gegenlesen. Bei unbekannten Taetern ist der Indikativ dagegen korrekt.
+        if not facts.get("ungeloest") and parse.distanz_fehlt(facts.get("details") or ""):
+            warnungen.append("Beschuldigter benannt, aber Text ohne Distanz — Unschuldsvermutung prüfen!")
+        warnung = " · ".join(w for w in warnungen if w)
         if warnung:
             print(f"[extract] ⚠ {case_id}: {warnung}")
         update_case(case_id, {"facts": facts, "fulltext": fulltext, "warnung": warnung})

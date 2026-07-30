@@ -61,17 +61,30 @@ AMBER = (255, 206, 107)
 # ---------------------------------------------------------------------------
 # LINUX-FONT: DejaVuSans-Bold statt Windows-Arial
 # ---------------------------------------------------------------------------
-_DEJAVU_DIRS = [
+# Bevorzugter Overlay-Font: Oswald-Bold (kantiger True-Crime-Look), mit
+# DejaVu-Fallback. FONT_DIR (Env) erlaubt lokales Ueberschreiben/Testen.
+_CUSTOM_FONT_DIRS = [
     os.environ.get("FONT_DIR", ""),
+    "/usr/share/fonts/truetype/custom",   # Oswald-Bold (siehe Dockerfile-COPY)
+    "/app/assets/fonts",                  # via `COPY . .` mitgeliefert
+]
+_DEJAVU_DIRS = [
     "/usr/share/fonts/truetype/dejavu",   # Debian/Ubuntu-Paket fonts-dejavu-core (siehe Dockerfile)
 ]
 
 
 def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
-    name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
-    for d in _DEJAVU_DIRS:
+    # 1) Oswald-Bold bevorzugen (deckt alle Overlays ab — alle sind bold).
+    for d in _CUSTOM_FONT_DIRS:
         if not d:
             continue
+        try:
+            return ImageFont.truetype(os.path.join(d, "Oswald-Bold.ttf"), size)
+        except Exception:
+            pass
+    # 2) Fallback: DejaVu (bold/regular) aus dem Systempaket.
+    name = "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf"
+    for d in _DEJAVU_DIRS:
         try:
             return ImageFont.truetype(os.path.join(d, name), size)
         except Exception:

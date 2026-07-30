@@ -24,6 +24,7 @@ import re
 import urllib.request
 from typing import Any, Optional
 
+from . import parse
 from .contracts import Facts
 
 # Für 300 Videos/Tag bewusst günstig + schnell (wie im Prototyp).
@@ -46,13 +47,24 @@ Erklärung, kein Fließtext außerhalb des JSON:
   "zeit": "HH:MM (24h) oder null, falls keine Uhrzeit im Text steht",
   "ort": "NUR die Stadt/Gemeinde, z.B. 'Dresden' — niemals Straße oder Stadtteil-Adresse",
   "taeter_anzahl": ganze Zahl oder null,
-  "werkzeug": "Tatwerkzeug/Vorgehen in wenigen Worten oder null",
+  "werkzeug": "grobe Werkzeug-KATEGORIE als Gegenstand, passend in den Satz 'Mit ... sollen die Täter vorgegangen sein' — z.B. 'einem Sprengsatz', 'einem Winkelschleifer', 'schwerem Aufbruchwerkzeug'. Niemals das WIE, niemals ein Vorgang wie 'Sprengung'. null, wenn unklar",
   "beute_eur": ganze Zahl (Euro, genannter/geschätzter Beutewert) oder null,
   "schaden_eur": ganze Zahl (Euro, Sachschaden) oder null,
-  "details": "1-2 sachliche Sätze Zusammenfassung, keine wörtliche Übernahme aus dem Text",
+  "details": "2-4 kurze, sachliche Sätze Zusammenfassung zum VORLESEN, keine wörtliche Übernahme aus dem Text (Form siehe SPRECHBARKEIT)",
   "ungeloest": true oder false (true, wenn Täter flüchtig/unbekannt bzw. Zeugen gesucht werden),
   "quelle_link": "wird unverändert durchgereicht, siehe unten"
 }
+
+SPRECHBARKEIT von "details" — der Text wird von einer Stimme VORGELESEN, nicht
+gelesen. Der Zuhörer kann nicht zurückspringen:
+- Kurze Hauptsätze, ein Gedanke pro Satz, höchstens etwa 20 Wörter.
+- KEIN Semikolon und KEIN Gedankenstrich — beides ist beim Hören nicht wahrnehmbar.
+  Mach daraus zwei Sätze.
+- Keine angehängten Relativsatz-Ketten. Statt "…flüchteten mit einem Auto, das
+  später in Amsterdam verwickelt wurde" lieber: "…flüchteten mit einem Auto.
+  Dieses Fahrzeug soll später in Amsterdam aufgetaucht sein."
+- Lieber drei kurze Sätze als einen langen. Die Konjunktiv-Pflicht unten gilt
+  trotzdem in JEDEM dieser Sätze.
 
 HARTE REGELN (niemals brechen, auch wenn im Text vorhanden):
 - NIEMALS Namen von Verdächtigen, Opfern oder Zeugen — auch keine Initialen.
@@ -62,6 +74,77 @@ HARTE REGELN (niemals brechen, auch wenn im Text vorhanden):
 - Zahlen als reine Ganzzahlen ohne Währungssymbol/Tausenderpunkte im JSON-Wert.
 - Bei mehreren genannten Orten: die Stadt/Gemeinde des Tatorts verwenden, nicht
   die der Polizeidienststelle, falls unterscheidbar.
+- UNSCHULDSVERMUTUNG in "details" — die wichtigste Sprachregel, wörtlich befolgen:
+  Die Unschuldsvermutung schützt PERSONEN, nicht EREIGNISSE. Daraus folgen zwei
+  verschiedene Dinge — verwechsle sie nicht:
+
+  (A) DIE TAT SELBST ist eine Tatsache, wenn die Polizei sie meldet. Dass ein
+      Automat gesprengt wurde, steht nicht in Frage — der Automat ist zerstört.
+      Schreib das im INDIKATIV: "Ein Geldautomat wurde gesprengt."
+
+  (B) DIE TÄTERSCHAFT ist das, was unbewiesen sein kann. Hier entscheidet, ob
+      jemand IDENTIFIZIERT ist:
+
+      • Täter UNBEKANNT oder flüchtig (niemand ist festgenommen oder benannt):
+        Dann gibt es keine Person, die vorverurteilt werden könnte. INDIKATIV
+        ist richtig und erwünscht — genau so schreiben Polizei und Presse:
+          RICHTIG: "Unbekannte Täter sprengten den Automaten und flüchteten."
+          RICHTIG: "Die Täter sind flüchtig, die Fahndung läuft."
+        Setze hier KEINEN Konjunktiv — das klingt vorsichtiger als die Quelle
+        und ist sachlich unnötig.
+
+      • Sobald jemand IDENTIFIZIERT ist — festgenommen, beschuldigt, benannt
+        ("der 24-Jährige", "die Festgenommenen", "Tatverdächtige"): Dann greift
+        die Unschuldsvermutung mit voller Wucht. Distanz ist PFLICHT:
+          FALSCH: "Der Festgenommene sprengte den Automaten."
+          RICHTIG: "Der Festgenommene soll den Automaten gesprengt haben."
+
+      • Ist der HERGANG selbst unsicher (nur Zeugenangaben, widersprüchliche
+        Darstellung, Vermutung der Ermittler), distanziere ebenfalls — dann aber
+        wegen der unsicheren Quelle, nicht wegen der Schuld:
+          "Nach Angaben von Zeugen flohen zwei Männer auf Fahrrädern."
+
+  Wenn du distanzierst, WECHSLE DIE MITTEL AB. "sollen" höchstens EINMAL im
+  ganzen details-Text, und nie in zwei aufeinanderfolgenden Sätzen dasselbe
+  Mittel — dreimal "sollen" hintereinander liest sich wie ein Formular.
+  Zur Auswahl stehen:
+    a) Konjunktiv I der indirekten Rede (die eleganteste Form):
+       "Die Täter hätten den Automaten gesprengt." / "Sie seien geflüchtet."
+    b) "sollen ... haben/sein"  (sparsam einsetzen)
+    c) "mutmaßlich" / "die mutmaßlichen Täter" / "Tatverdächtige"
+    d) Quellenzuschreibung: "laut Polizei", "nach Angaben der Ermittler",
+       "den Ermittlern zufolge", "nach bisherigen Erkenntnissen"
+    e) "angeblich", "offenbar"
+    f) AM BESTEN, wo es passt: Satz ganz OHNE handelnde Person. Ohne
+       Täter-Subjekt gibt es nichts zu behaupten und nichts zu distanzieren:
+       "Der Geldautomat wurde gesprengt." statt "Die Täter sollen ... haben."
+  Beispiel für einen Fall mit UNBEKANNTEN Tätern (Indikativ, so wie die Quelle):
+    "In einer Bankfiliale wurde am frühen Dienstagmorgen ein Geldautomat
+     gesprengt. Die unbekannten Täter flüchteten ohne Beute. Das Wohnhaus wurde
+     erheblich beschädigt, ist aber nicht einsturzgefährdet. Nach Angaben von
+     Zeugen flohen zwei Männer auf Fahrrädern."
+  Beispiel für einen Fall mit IDENTIFIZIERTEM Beschuldigten (Distanz Pflicht,
+  Mittel abgewechselt):
+    "Ein Geldautomat wurde gesprengt. Ein 24-Jähriger soll die Tat begangen
+     haben. Er sei kurz darauf festgenommen worden. Der Schaden liegt im
+     sechsstelligen Bereich."
+  Wenn du den Konjunktiv nutzt, gilt er bis zum Satzende — auch in angehängten
+  Teilsätzen nach "und". Er darf nicht auf halbem Weg zurückfallen:
+    FALSCH: "Er soll Geldkassetten mitgenommen und ist mit dem Rad geflohen."
+    RICHTIG: "Er soll Geldkassetten mitgenommen haben und mit dem Rad
+             geflohen sein."
+  Sätze OHNE handelnde Personen sind IMMER Indikativ — Schäden, Sachen,
+  Behörden-Handeln sind keine Schuldbehauptung:
+    OK: "Der Automat wurde vollständig zerstört."
+    OK: "Die Fahndung mit Hubschrauber blieb erfolglos."
+  Solange niemand verurteilt ist, gilt jede identifizierte Person als unschuldig.
+- KEINE NACHAHMUNGS-ANLEITUNG in "werkzeug", "details" und "tat": Die Tat DARF
+  benannt werden (z.B. "gesprengt", "Sprengung", "Explosion", "Winkelschleifer",
+  "Aufbruchwerkzeug") — das WIE aber NIEMALS. Verboten sind konkrete Stoffarten
+  (z.B. Gasgemisch, Butan, Propan, Schwarzpulver), Mengenangaben, die Art der
+  Zuführung (z.B. "über einen Schlauch eingeleitet"), Zündmechanismen und jede
+  Schritt-für-Schritt-Abfolge. Im Zweifel die Kategorie nennen und das Wie
+  weglassen — der Fokus liegt auf Tatort, Schaden, Folgen und Fahndung.
 
 Gib NUR das JSON-Objekt zurück, sonst nichts."""
 
@@ -243,6 +326,28 @@ _STRASSE_RE = re.compile(
 _PLZ_RE = re.compile(r"\b\d{5}\b")
 _KOORD_RE = re.compile(r"[-+]?\d{1,3}\.\d{3,}\s*,\s*[-+]?\d{1,3}\.\d{3,}")
 
+# Sammelmuster fuer die satzweise Schranke in den gesprochenen Feldern.
+_PII_RE = re.compile(
+    "|".join(f"(?:{p.pattern})" for p in (_KOORD_RE, _PLZ_RE, _STRASSE_RE)),
+    re.I,
+)
+
+
+def pruefe_text(text: str) -> list[str]:
+    """Verstoesse eines Textes gegen die harten Schranken, im Klartext.
+
+    Leere Liste = sauber. Genutzt von core.lektor, um Lektor-Vorschlaege
+    nachzukontrollieren: ein umgeschriebener Text darf die Guardrails nicht
+    wieder hereinschreiben, die sanitize() bei der Extraktion entfernt hat.
+    """
+    gruende: list[str] = []
+    t = text or ""
+    if _KOORD_RE.search(t) or _PLZ_RE.search(t) or _STRASSE_RE.search(t):
+        gruende.append("Adresse/PLZ/Koordinaten")
+    if parse.hat_methode(t):
+        gruende.append("Methoden-Detail (Nachahmungs-Schutz)")
+    return gruende
+
 
 def sanitize(facts: dict[str, Any]) -> dict[str, Any]:
     """Letzte Schranke: verwirft alles, was nach Straße/Hausnr./PLZ/Koordinaten
@@ -261,13 +366,22 @@ def sanitize(facts: dict[str, Any]) -> dict[str, Any]:
     ort = re.sub(r"\s{2,}", " ", ort).strip(" ,-")
     out["ort"] = ort
 
-    # Details/Werkzeug/Tat: Koordinaten/PLZ/Straßen-Muster hart entfernen.
+    # Details/Werkzeug/Tat: Saetze mit Adress-/Koordinaten-Resten ODER mit
+    # Methoden-/Anleitungs-Details komplett streichen.
+    #
+    # Frueher wurden hier "[entfernt]"-Platzhalter eingesetzt — diese Felder
+    # landen aber im Voiceover, und die TTS liest den Platzhalter woertlich vor
+    # ("eckige Klammer entfernt"). Deshalb faellt jetzt der ganze Satz weg,
+    # siehe core.parse.drop_saetze.
     for field_name in ("details", "werkzeug", "tat"):
         val = out.get(field_name)
         if isinstance(val, str) and val:
-            val = _KOORD_RE.sub("[entfernt]", val)
-            val = _PLZ_RE.sub("[entfernt]", val)
-            val = _STRASSE_RE.sub("[entfernt]", val)
-            out[field_name] = val.strip()
+            val = parse.drop_saetze(val, _PII_RE)
+            out[field_name] = parse.entschaerfe_methode(val)
+
+    # Leer gewordenes werkzeug -> None, damit core.script die Zeile weglaesst
+    # statt "Mit  sollen die Taeter vorgegangen sein" zu bauen.
+    if not (out.get("werkzeug") or "").strip():
+        out["werkzeug"] = None
 
     return out

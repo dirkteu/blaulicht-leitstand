@@ -183,3 +183,124 @@ def norm_title(title: str) -> str:
     t = re.sub(r"\d{2}\.\d{2}\.\d{2,4}|\d{6}-\d-\w", " ", t)
     t = re.sub(r"[^a-zäöüß ]", " ", t)
     return re.sub(r"\s+", " ", t).strip()
+
+
+# ---------------------------------------------------------------------------
+# METHODEN-SPERRE — keine Nachahmungs-Anleitung im gesprochenen Text
+# ---------------------------------------------------------------------------
+# Plattform-Richtlinien (TikTok/YouTube) verbieten ANLEITUNGEN zu schaedlichen
+# Taten — nicht die Benennung der Tat. Deshalb bewusst zweigeteilt:
+#
+#   ERLAUBT (Kategorie, steht so auch in jeder Polizeimeldung):
+#       „gesprengt", „Sprengung", „Sprengsatz", „Explosion", „Winkelschleifer",
+#       „Aufbruchwerkzeug", „Brechstange"
+#   GESPERRT (Rezept):
+#       Stoffarten, Mengen, Zufuehrung, Zuendung, Schrittfolge
+#
+# Nicht zu verwechseln mit „Shadowban-Wortlisten", die kursieren: Begriffe wie
+# „gesprengt" durch „Gasgemisch" zu ersetzen macht es SCHLIMMER — das benennt
+# die Methode praeziser und rueckt damit erst recht Richtung Anleitung.
+_METHODE_RE = re.compile(
+    r"""(?ix)
+    \b(?:
+        gasgemisch | gasflasche[n]? | butan | propan | acetylen | sauerstoffflasche[n]?
+      | schwarzpulver | nitropenta | nitrat(?:mischung)?
+      # Typ-Bezeichnungen von Sprengstoff (Fest-, Feststoff-, Flüssig-,
+      # Plastik-…). Das blosse "Sprengstoff" bleibt ERLAUBT — es ist der
+      # Oberbegriff und steht so in jeder Polizeimeldung; erst die Typangabe
+      # macht daraus eine Stoffart.
+      | \w+sprengstoff
+      | pyrotechnische[nrms]?\s+satz | blitzknallsatz
+      | z(?:ü|u|ue)ndschnur | sprengschnur | z(?:ü|u|ue)nder | detonator
+      | fernz(?:ü|u|ue)ndung
+      | \d+\s*(?:gramm|g|kg|kilo|liter|l)\s+(?:spreng|gas|pulver)\w*
+    )\b
+    | \b(?:einge|zuge)leitet\b
+    | \b(?:ü|ue)ber\s+(?:einen|ein|mehrere)\s+Schl(?:ä|a|ae)uch\w*
+    """,
+)
+
+# Satzgrenzen fuer das gezielte Streichen (gleiche Logik wie core.script).
+_SATZ_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def drop_saetze(text: str, muster: "re.Pattern[str]") -> str:
+    """Alle Saetze entfernen, in denen `muster` trifft — bewusst KEIN Platzhalter.
+
+    Warum satzweise statt Ersetzen: Diese Felder (`details`, `werkzeug`, `tat`)
+    landen im Voiceover. Ein eingesetztes „[entfernt]" wuerde von der TTS
+    woertlich vorgelesen („eckige Klammer entfernt"). Faellt dagegen der ganze
+    Satz weg, bleibt gesprochener Text uebrig, der sich natuerlich anhoert.
+
+    Trifft das Muster in JEDEM Satz (typisch bei kurzen Feldern wie `werkzeug`),
+    bleibt "" zurueck — die aufrufende Stelle laesst die Zeile dann ganz weg.
+    """
+    t = (text or "").strip()
+    if not t or not muster.search(t):
+        return t
+    saetze = [s.strip() for s in _SATZ_SPLIT_RE.split(t) if s.strip()]
+    return " ".join(s for s in saetze if not muster.search(s)).strip()
+
+
+def hat_methode(text: str) -> bool:
+    """True, wenn der Text Methoden-/Anleitungs-Details enthaelt (Stoffart,
+    Menge, Zufuehrung, Zuendung). Detektor fuer die Review-Warnung."""
+    return bool(_METHODE_RE.search(text or ""))
+
+
+def entschaerfe_methode(text: str) -> str:
+    """Saetze mit Methoden-/Anleitungs-Details entfernen (siehe drop_saetze)."""
+    return drop_saetze(text, _METHODE_RE)
+
+
+# ---------------------------------------------------------------------------
+# UNSCHULDSVERMUTUNG — journalistische Distanz im erzaehlenden Text
+# ---------------------------------------------------------------------------
+# NUR echte Distanzierungen zur SCHULD zaehlen. Bewusst NICHT dabei:
+# „unbekannte Taeter", „Ermittlungen", „Zeugen" — die sagen nur, dass jemand
+# nicht identifiziert ist bzw. ermittelt wird. „Zwei unbekannte Taeter sprengten
+# ..." behauptet die Tat weiterhin als Tatsache und darf NICHT als ausreichend
+# gelten. (Genau dieser Fall war beim ersten Entwurf durchgerutscht.)
+#
+# Genutzt von core.script (Fallback-Satz bauen) und core.lektor (Nachkontrolle:
+# ein Lektor-Vorschlag darf die Distanzierung nicht wegformulieren).
+# Alle Mittel, die im Deutschen echte Distanz zur SCHULD herstellen. Bewusst
+# breit, damit der Extract-Prompt abwechseln kann statt dreimal „sollen" zu
+# schreiben — die Pruefung darf die Alternativen nicht als fehlende Distanz
+# missverstehen.
+_DISTANZ_RE = re.compile(
+    r"mutmaßlich|angeblich|verdächtig|offenbar"
+    r"|\bsollen\b|\bsoll\b"
+    r"|\bhätten?\b|\bseien\b|\bsei\b|\bwären?\b|\bhabe\b"          # Konjunktiv I/II
+    r"|\blaut\s+(?:der\s+|den\s+)?(?:polizei|ermittl|behörd|angaben|staatsanwalt)"
+    r"|nach\s+(?:angaben|erkenntnis|ermittl)|zufolge",
+    re.I,
+)
+
+
+def distanz_fehlt(*texte: str) -> bool:
+    """True, wenn in KEINEM der Texte eine Distanzierung zur Schuld steht."""
+    return not _DISTANZ_RE.search(" ".join(t for t in texte if t))
+
+
+# Konjunktiv-Bruch: Ein Satz startet distanziert („sollen ... "), faellt aber
+# nach einem „und" in den Indikativ zurueck — der zweite Teilsatz behauptet dann
+# wieder als Tatsache. distanz_fehlt() greift hier NICHT, weil „sollen" im
+# selben Satz ja vorkommt. Beispiel aus der Praxis:
+#   „Sie sollen Geldkassetten mitgenommen und SIND mit Fahrraedern geflohen."
+# Bewusst nur eine Warnung, keine automatische Korrektur: Grammatik umbauen ist
+# per Regex nicht sicher moeglich — der Mensch entscheidet im Review.
+_SOLL_RE = re.compile(r"\bsoll(?:en)?\b", re.I)
+_INDIKATIV_ANHANG_RE = re.compile(
+    r"\bund\s+(?:sind|ist|hat|haben|war|waren|wurde|wurden)\b", re.I)
+
+
+def konjunktiv_bruch(text: str) -> bool:
+    """True, wenn ein Satz mit „sollen" spaeter nach „und" in den Indikativ faellt."""
+    for satz in _SATZ_SPLIT_RE.split(text or ""):
+        m = _SOLL_RE.search(satz)
+        if not m:
+            continue
+        if _INDIKATIV_ANHANG_RE.search(satz, m.end()):
+            return True
+    return False

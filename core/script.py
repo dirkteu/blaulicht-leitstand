@@ -25,19 +25,35 @@ import re
 from datetime import datetime
 from typing import Any, Optional
 
+from . import parse
+
 CHANNEL = "Nachtknall"
 DURATION = 42  # Ziel-Länge in Sekunden (Richtwert, siehe durs unten)
+
+# Steht unter jeder Video-Beschreibung (workers/publish.py baut sie aus
+# spec.meta.caption). Signalisiert der Plattform-Moderation Dokumentation statt
+# Verherrlichung — das ist die Achse, auf der TikTok/YouTube tatsaechlich
+# pruefen. Deckt zugleich die Unschuldsvermutung nach aussen ab.
+DISCLAIMER = (
+    "Hinweis: Dieser Kanal dokumentiert Kriminalfälle sachlich auf Basis "
+    "offizieller Polizeimeldungen und Medienberichte. Es gilt die "
+    "Unschuldsvermutung. Nachahmung ist strafbar."
+)
 
 # ---------------------------------------------------------------------------
 # B-ROLL-BIBLIOTHEK — PORTIERT aus script_gen.py (Dateinamen wie im Bucket `broll`)
 # ---------------------------------------------------------------------------
+# POOL-GROESSE: aktuell 1 je Kategorie (Test „ein Clip pro Kategorie") — der
+# Picker waehlt so immer broll_<kategorie>_01.mp4, jede Szene bekommt echtes
+# B-Roll. Sobald mehr Clips hochgeladen sind: obere Grenze je Zeile erhoehen
+# (z. B. range(1, 5) fuer 4 Varianten) — Namen bleiben broll_<kategorie>_NN.mp4.
 ASSETS = {
-    "street":    [f"broll_strasse_{i:02d}.mp4"   for i in range(1, 9)],
-    "blaulicht": [f"broll_blaulicht_{i:02d}.mp4" for i in range(1, 8)],
-    "cctv":      [f"broll_cctv_{i:02d}.mp4"      for i in range(1, 7)],
-    "weather":   [f"broll_wetter_{i:02d}.mp4"    for i in range(1, 8)],
-    "location":  [f"broll_kulisse_{i:02d}.mp4"   for i in range(1, 9)],
-    "effect":    [f"broll_effekt_{i:02d}.mp4"    for i in range(1, 8)],
+    "street":    [f"broll_strasse_{i:02d}.mp4"   for i in range(1, 2)],
+    "blaulicht": [f"broll_blaulicht_{i:02d}.mp4" for i in range(1, 2)],
+    "cctv":      [f"broll_cctv_{i:02d}.mp4"      for i in range(1, 2)],
+    "weather":   [f"broll_wetter_{i:02d}.mp4"    for i in range(1, 2)],
+    "location":  [f"broll_kulisse_{i:02d}.mp4"   for i in range(1, 2)],
+    "effect":    [f"broll_effekt_{i:02d}.mp4"    for i in range(1, 2)],
 }
 
 # Welche B-Roll-Kategorie passt zu welcher Szenen-Rolle
@@ -76,31 +92,82 @@ def _split_sentences(details: str) -> list[str]:
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+", details) if s.strip()]
 
 
+def _taeter(ungeloest: bool) -> str:
+    """Unschuldsvermutung: nie schuld-behauptend. Bei flüchtigen/unbekannten
+    Tätern 'die unbekannten Täter', sonst 'die mutmaßlichen Täter'."""
+    return "die unbekannten Täter" if ungeloest else "die mutmaßlichen Täter"
+
+
 def _line_eskalation(tat: str, first_sentence: str) -> str:
     if first_sentence:
         return first_sentence.rstrip(".") + "."
     return f"Die Lage eskaliert schnell — {(tat or 'der Vorfall').strip().lower()} sorgt für einen Großeinsatz."
 
 
-def _line_story(werkzeug: Optional[str], rest_sentences: str, tat: str) -> str:
-    prefix = f"Mit {werkzeug} gehen die Täter vor. " if werkzeug else ""
+def _line_story(werkzeug: Optional[str], rest_sentences: str, tat: str,
+                ungeloest: bool, distanz_vorhanden: bool = False) -> str:
+    """Werkzeug-Satz + restliche Fakten-Saetze.
+
+    Die Unschuldsvermutung schuetzt PERSONEN, nicht Ereignisse — und greift erst,
+    sobald jemand identifiziert ist. Deshalb drei Varianten:
+
+    - `ungeloest=True` (Taeter unbekannt/fluechtig): INDIKATIV. Es gibt keine
+      Person, die vorverurteilt werden koennte; Polizei und Presse schreiben an
+      dieser Stelle selbst im Indikativ.
+    - `ungeloest=False` (jemand gefasst/benannt) + `distanz_vorhanden=False`:
+      Der Satz traegt die Distanzierung selbst („sollen ... vorgegangen sein").
+    - `ungeloest=False` + `distanz_vorhanden=True` (`details` distanziert schon):
+      agentloses Passiv, damit sich „sollen" nicht stapelt.
+    """
+    if werkzeug:
+        if ungeloest:
+            prefix = f"Mit {werkzeug} gingen {_taeter(ungeloest)} vor. "
+        elif distanz_vorhanden:
+            prefix = f"Mit {werkzeug} wurde offenbar vorgegangen. "
+        else:
+            prefix = f"Mit {werkzeug} sollen {_taeter(ungeloest)} vorgegangen sein. "
+    else:
+        prefix = ""
     rest = rest_sentences or f"Die Polizei ermittelt die Hintergründe der {tat or 'Tat'}."
     return (prefix + rest).strip()
 
 
+def _eur(n: int) -> str:
+    """Eurobetrag mit deutschem Tausenderpunkt (40000 -> „40.000")."""
+    return f"{n:,}".replace(",", ".")
+
+
 def _line_zahlen(beute: Optional[int], schaden: Optional[int]) -> str:
+    """Beute/Schaden-Satz.
+
+    WICHTIG: 0 ist eine AUSSAGE („keine Beute"), kein fehlender Wert — deshalb
+    durchgehend `is not None` statt Truthiness. Sonst entsteht der Unsinnssatz
+    „Die Beute wird auf rund 0 Euro geschätzt." (real aufgetreten bei einer
+    Sprengung, bei der die Täter nicht an die Kassetten kamen).
+    """
+    kein_schaden = "Nennenswerter Sachschaden entstand nicht."
+    keine_beute = "Beute wurde keine gemacht."
+
     if beute is not None and schaden is not None:
-        return (f"Die Beute: rund {beute:,} Euro. Der Schaden: etwa {schaden:,} Euro."
-                ).replace(",", ".")
+        b = keine_beute if beute == 0 else f"Die Beute: rund {_eur(beute)} Euro."
+        s = kein_schaden if schaden == 0 else f"Der Schaden: etwa {_eur(schaden)} Euro."
+        return f"{b} {s}"
     if schaden is not None:
-        return f"Der Sachschaden liegt bei etwa {schaden:,} Euro.".replace(",", ".")
+        return (kein_schaden if schaden == 0
+                else f"Der Sachschaden liegt bei etwa {_eur(schaden)} Euro.")
     if beute is not None:
-        return f"Die Beute wird auf rund {beute:,} Euro geschätzt.".replace(",", ".")
+        return (f"{keine_beute} Die genaue Schadenshöhe ist noch unklar." if beute == 0
+                else f"Die Beute wird auf rund {_eur(beute)} Euro geschätzt.")
     return "Die genaue Schadenshöhe ist noch unklar."
 
 
+# Distanz-Pruefung liegt in core.parse (dort wohnen die reinen Text-Regeln) —
+# core.lektor braucht dieselbe Pruefung fuer die Nachkontrolle seiner Vorschlaege.
+_distanz_fehlt = parse.distanz_fehlt
+
+
 def _line_cliffhanger(ungeloest: bool) -> str:
-    return ("Von den Tätern fehlt bis heute jede Spur — die Polizei bittet um Hinweise."
+    return ("Von den unbekannten Tätern fehlt bis heute jede Spur — die Polizei bittet um Hinweise."
             if ungeloest else "Die Ermittlungen laufen — der Fall ist noch nicht abgeschlossen.")
 
 
@@ -126,22 +193,48 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     ort = (facts.get("ort") or case.get("region") or "unbekannter Ort").strip()
     tat = (facts.get("tat") or case.get("title") or "Vorfall").strip()
     zeit = facts.get("zeit")
-    werkzeug = facts.get("werkzeug")
     beute = facts.get("beute_eur")
     schaden = facts.get("schaden_eur")
     ungeloest = bool(facts.get("ungeloest"))
-    details = (facts.get("details") or "").strip()
+
+    # ZWEITES GATE gegen Nachahmungs-Anleitungen. core.extract.sanitize() saeubert
+    # schon bei der Extraktion — hier nochmal, direkt vor dem Bau des gesprochenen
+    # Textes. So sind auch Bestandsfaelle abgedeckt, deren Fakten vor dieser Regel
+    # entstanden sind (kein erneuter Claude-Lauf noetig).
+    werkzeug = parse.entschaerfe_methode(str(facts.get("werkzeug") or "")) or None
+    details = parse.entschaerfe_methode((facts.get("details") or "").strip())
     sentences = _split_sentences(details)
     first_sentence = sentences[0] if sentences else ""
     rest_sentences = " ".join(sentences[1:]) if len(sentences) > 1 else ""
 
+    # Steht in `details` schon Konjunktiv/„mutmaßlich"? Dann braucht der
+    # Werkzeug-Satz seine eigene Distanzierung nicht zu wiederholen.
+    distanz_in_details = not _distanz_fehlt(details)
+
     lines = {
         "hook": _line_hook(ort, zeit, tat),
         "eskalation": _line_eskalation(tat, first_sentence),
-        "story": _line_story(werkzeug, rest_sentences, tat),
+        "story": _line_story(werkzeug, rest_sentences, tat, ungeloest, distanz_in_details),
         "zahlen": _line_zahlen(beute, schaden),
         "cliffhanger": _line_cliffhanger(ungeloest),
     }
+
+    # GUARDRAIL Unschuldsvermutung — greift NUR, wenn jemand identifiziert ist.
+    # Bei unbekannten/fluechtigen Taetern (ungeloest=True) gibt es keine Person,
+    # die vorverurteilt werden koennte; dort ist der Indikativ korrekt und wird
+    # von Polizei und Presse selbst verwendet ("Unbekannte sprengten den
+    # Automaten und fluechteten"). Ein Distanz-Zusatz waere dort vorsichtiger
+    # als die Quelle — und damit unnoetig.
+    # Bewusst JE ZEILE geprueft, nicht ueber beide zusammen: Sonst haette ein
+    # „sollen" in der Werkzeug-Zeile eine Schuldbehauptung in der Eskalations-
+    # Zeile verdeckt („Der Festgenommene sprengte den Automaten.").
+    if not ungeloest:
+        zusatz = (f"Nach bisherigen Erkenntnissen sollen {_taeter(ungeloest)} "
+                  f"für die Tat verantwortlich sein.")
+        for rolle in ("eskalation", "story"):
+            if _distanz_fehlt(lines[rolle]):
+                lines[rolle] = f"{zusatz} {lines[rolle]}".strip()
+                break   # einmal reicht — der Hinweis gilt fuer den ganzen Block
 
     # Deterministischer B-Roll-Seed (Titel + Quelle, damit derselbe Fall stabil bleibt)
     seed_src = f"{case.get('title', '')}|{facts.get('quelle_link') or case.get('link', '')}"
@@ -199,7 +292,8 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
         "meta": {
             "hook_line": lines["hook"],
             "title_options": title_options,
-            "caption": f"{ort}: {tat}. Was ist da los? 👇",
+            "caption": f"{ort}: {tat}. Was ist da los? 👇\n\n{DISCLAIMER}",
+            "disclaimer": DISCLAIMER,
             "hashtags": hashtags,
             "thumbnail_prompt": (
                 f"dark night street in {ort}, red and blue police lights, dramatic, "
