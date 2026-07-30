@@ -27,6 +27,8 @@ import os
 import re
 import tempfile
 import time
+from collections import Counter
+from datetime import datetime
 from typing import Any, Optional
 
 from fastapi import FastAPI, Form, Query, Request, UploadFile, File
@@ -37,8 +39,9 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from redis import Redis
 from rq import Queue as RQQueue
+from rq.registry import FailedJobRegistry, StartedJobRegistry
 
-from core import supa
+from core import broll_prompts, lektor, supa
 from core.contracts import (
     BROLL_KATEGORIEN,
     Bucket,
@@ -183,6 +186,50 @@ def state_label(state: str) -> str:
 templates.env.filters["state_label"] = state_label
 
 
+# --- Datum/Zeit deutsch: TT.MM.JJJJ (statt ISO 2026-07-30) -----------------
+# Zeitstempel kommen als ISO-String aus Supabase (created_at, UTC) bzw. als
+# reines Datum aus der Fakten-Extraktion (facts.datum, YYYY-MM-DD). Beide
+# Formen landen hier; unparsbares wird unveraendert durchgereicht statt zu
+# knallen (die UI soll nie an einem Datum scheitern).
+try:
+    from zoneinfo import ZoneInfo
+    _TZ: Optional[Any] = ZoneInfo(os.environ.get("TZ", "Europe/Berlin"))
+except Exception:                                    # tzdata fehlt im Image
+    _TZ = None
+
+
+def _parse_dt(value: Any) -> Optional[datetime]:
+    s = str(value or "").strip()
+    if not s:
+        return None
+    try:
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def dt_de(value: Any, fallback: str = "—") -> str:
+    """ISO-Zeitstempel -> „TT.MM.JJJJ HH:MM" in lokaler Zeit (Europe/Berlin)."""
+    d = _parse_dt(value)
+    if d is None:
+        return str(value) if value else fallback
+    if d.tzinfo is not None and _TZ is not None:
+        d = d.astimezone(_TZ)
+    return d.strftime("%d.%m.%Y %H:%M")
+
+
+def datum_de(value: Any, fallback: str = "—") -> str:
+    """Datum (auch ohne Uhrzeit) -> „TT.MM.JJJJ", ohne Zeitanteil."""
+    d = _parse_dt(value)
+    if d is None:
+        return str(value) if value else fallback
+    return d.strftime("%d.%m.%Y")
+
+
+templates.env.filters["dt_de"] = dt_de
+templates.env.filters["datum_de"] = datum_de
+
+
 def set_config_min_score(value: int) -> None:
     """Persistiert die Score-Schwelle in blaulicht.config (Singleton id=1).
     core.supa bietet dafür bewusst keinen eigenen Helper — wir nutzen den
@@ -208,6 +255,7 @@ def dashboard(request: Request, min_score: Optional[int] = None, state: Optional
             "min_score": threshold,
             "state": state or "",
             "states": list(State),
+            **_status_ctx(),          # Statusband beim ersten Rendern befuellen
         },
     )
 
@@ -225,6 +273,74 @@ def cases_table_partial(request: Request, min_score: int = 40, state: str = ""):
             "states": list(State),
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Statusanzeige — was arbeitet gerade? (Kopfzeile im Dashboard, pollt sich selbst)
+# ---------------------------------------------------------------------------
+QUEUE_LABELS: dict[QueueName, str] = {
+    QueueName.INGEST: "Ingest",
+    QueueName.EXTRACT: "Fakten",
+    QueueName.SCRIPT: "Skript",
+    QueueName.TTS: "Stimme",
+    QueueName.RENDER: "Render",
+    QueueName.PUBLISH: "Publish",
+}
+
+# Zustaende, die im Statusband gezaehlt werden (verworfen/veroeffentlicht
+# interessieren im laufenden Betrieb nicht — die sind erledigt).
+STATUS_STATES = (State.NEU, State.IN_ANALYSE, State.REVIEW,
+                 State.IN_PRODUKTION, State.FERTIG)
+
+
+def _status_ctx() -> dict[str, Any]:
+    """Queue-Auslastung + Fallzahlen je Zustand fuer das Statusband.
+
+    Redis-Ausfall darf das Dashboard nicht zerlegen: schlaegt der Zugriff fehl,
+    wird das als Fehlermeldung im Band angezeigt statt als 500er-Seite.
+    """
+    queues: list[dict[str, Any]] = []
+    fehler_gesamt = 0
+    redis_ok = True
+    try:
+        conn = redis_conn()
+        for qn, label in QUEUE_LABELS.items():
+            q = RQQueue(qn.value, connection=conn)
+            laufend = len(StartedJobRegistry(queue=q))
+            fehler = len(FailedJobRegistry(queue=q))
+            fehler_gesamt += fehler
+            queues.append({"name": qn.value, "label": label,
+                           "wartend": q.count, "laufend": laufend, "fehler": fehler})
+    except Exception:
+        redis_ok = False
+
+    zustaende: list[dict[str, Any]] = []
+    db_ok = True
+    try:
+        from core.contracts import DB_SCHEMA
+        rows = (supa.client().schema(DB_SCHEMA).table("cases")
+                .select("state").limit(2000).execute().data or [])
+        counts = Counter(r.get("state") for r in rows)
+        zustaende = [{"value": s.value, "label": state_label(s.value),
+                      "anzahl": counts.get(s.value, 0)} for s in STATUS_STATES]
+    except Exception:
+        db_ok = False
+
+    aktiv = any(q["laufend"] or q["wartend"] for q in queues)
+    return {
+        "queues": queues,
+        "zustaende": zustaende,
+        "aktiv": aktiv,
+        "fehler_gesamt": fehler_gesamt,
+        "redis_ok": redis_ok,
+        "db_ok": db_ok,
+        "stand": datetime.now(_TZ).strftime("%H:%M:%S") if _TZ else datetime.now().strftime("%H:%M:%S"),
+    }
+
+
+@app.get("/partials/status", response_class=HTMLResponse)
+def status_partial(request: Request):
+    return templates.TemplateResponse(request, "partials/statusbar.html", _status_ctx())
 
 
 @app.post("/config/min-score", response_class=HTMLResponse)
@@ -344,6 +460,8 @@ def case_detail(request: Request, case_id: str):
     scenes = spec.get("scenes") or []
     voice_url = playable_url(Bucket.VOICE, case.get("voice_url"))
     video_url = playable_url(Bucket.RENDERS, case.get("video_url"))
+    # Lesbarkeits-Ampel je Szene — rein informativ, aendert nichts am Text.
+    lesbarkeit = [lektor.lesbarkeit(sc.get("vo") or "") for sc in scenes]
     return templates.TemplateResponse(
         request,
         "case_detail.html",
@@ -352,10 +470,36 @@ def case_detail(request: Request, case_id: str):
             "facts": facts,
             "spec": spec,
             "scenes": scenes,
+            "lesbarkeit": lesbarkeit,
             "voice_url": voice_url,
             "video_url": video_url,
             "states": list(State),
         },
+    )
+
+
+@app.post("/cases/{case_id}/lektor", response_class=HTMLResponse)
+def lektor_vorschlag(request: Request, case_id: str):
+    """Umschreib-Vorschlag fuer die Sprechtexte bauen (HTMX-Partial).
+
+    Speichert NICHTS — das Ergebnis ist ein Formular auf das bestehende
+    /retts, das der Mensch vor dem Absenden noch bearbeiten kann.
+    """
+    case = supa.get_case(case_id)
+    if not case:
+        return HTMLResponse('<div class="flash flash-error">Fall nicht gefunden.</div>', status_code=404)
+    scenes = (case.get("spec") or {}).get("scenes") or []
+    if not scenes:
+        return HTMLResponse('<div class="flash flash-error">Noch kein Skript vorhanden.</div>')
+    try:
+        vorschlaege = lektor.lektoriere(scenes)
+    except Exception as exc:                      # Claude nicht erreichbar o. ä.
+        return HTMLResponse(
+            f'<div class="flash flash-error">Lektor fehlgeschlagen: {exc}</div>')
+    return templates.TemplateResponse(
+        request,
+        "partials/lektor_vorschlag.html",
+        {"case": case, "scenes": scenes, "vorschlaege": vorschlaege},
     )
 
 
@@ -397,13 +541,68 @@ def _next_broll_name(kategorie: str, ext: str) -> str:
     return f"broll_{kategorie}_{max_nn + 1:02d}{ext}"
 
 
+# Kontext fuer den Prompt-Generator (Auswahllisten aus core.broll_prompts —
+# der Single Source of Truth; die fixen Bloecke selbst bleiben im core-Modul).
+def _prompt_generator_ctx() -> dict[str, Any]:
+    return {
+        "pg_beleuchtung": broll_prompts.BELEUCHTUNG,
+        "pg_zustand": broll_prompts.ZUSTAND,
+        "pg_umfeld": broll_prompts.UMFELD,
+        "pg_bewegung": broll_prompts.KAMERABEWEGUNG,
+        "pg_subjekt": broll_prompts.SUBJEKT,
+        "pg_master": broll_prompts.MASTER_PRESETS,
+        "pg_kategorien": broll_prompts.KATEGORIE_PRESETS,
+        "pg_workflow": broll_prompts.WORKFLOW_HINWEIS,
+    }
+
+
 @app.get("/broll", response_class=HTMLResponse)
 def broll_page(request: Request):
     files = supa.list_broll()
     return templates.TemplateResponse(
         request,
         "broll.html",
-        {"files": files, "kategorien": BROLL_KATEGORIEN, "error": None},
+        {"files": files, "kategorien": BROLL_KATEGORIEN, "error": None,
+         **_prompt_generator_ctx()},
+    )
+
+
+@app.get("/broll/prompt", response_class=HTMLResponse)
+def broll_prompt(request: Request,
+                 motiv: str = Query("automat"),
+                 zustand: str = Query("intakt_nacht"),
+                 umfeld: str = Query("wand"),
+                 beleuchtung: str = Query("nacht_laterne"),
+                 bewegung: str = Query("keine"),
+                 preset: Optional[str] = Query(None),
+                 kategorie: Optional[str] = Query(None)):
+    """Fertigen Higgsfield-Prompt bauen (HTMX-Partial fuer die /broll-Seite).
+
+    Drei Wege: Master-Preset (?preset=...), Kategorie-Preset (?kategorie=...,
+    liefert die zur Szenen-Rolle passende Kombination + Upload-Hinweis) oder
+    die freie Kombination aus den Dropdowns. motiv='automat' nutzt den fixen
+    [Automat]-Block; jeder andere Wert ist ein broll_prompts.SUBJEKT-Schluessel."""
+    ziel_kategorie = None
+    try:
+        if preset:
+            prompt = broll_prompts.build_master_prompt(preset)
+        elif kategorie:
+            prompt = broll_prompts.build_kategorie_prompt(kategorie)
+            ziel_kategorie = kategorie
+        elif motiv == "automat":
+            prompt = broll_prompts.build_prompt(
+                beleuchtung=beleuchtung, zustand=zustand, umfeld=umfeld,
+                kamerabewegung=bewegung)
+        else:
+            prompt = broll_prompts.build_prompt(
+                beleuchtung=beleuchtung, subjekt=motiv, kamerabewegung=bewegung)
+        error = None
+    except ValueError as e:
+        prompt, error = "", str(e)
+    return templates.TemplateResponse(
+        request,
+        "partials/prompt_out.html",
+        {"prompt": prompt, "error": error, "ziel_kategorie": ziel_kategorie},
     )
 
 

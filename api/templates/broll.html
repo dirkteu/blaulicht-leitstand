@@ -6,6 +6,62 @@
 </div>
 
 <section class="panel">
+  <h2>Prompt-Generator (Higgsfield)</h2>
+  <p class="muted small">Feste Blöcke ([Kamera]/[Automat]/[Stil]) sind im Code fixiert — immer derselbe
+    Automat, immer dieselbe Qualität. Nur die Auswahl unten variiert.</p>
+  <form class="upload-form" hx-get="/broll/prompt" hx-target="#prompt-out" hx-swap="innerHTML"
+        hx-trigger="change from:find select, submit">
+    <label for="pg-motiv">Motiv</label>
+    <select id="pg-motiv" name="motiv">
+      <option value="automat" selected>🚬 Zigarettenautomat (fixer Block)</option>
+      {% for key, (label, _) in pg_subjekt.items() %}
+      <option value="{{ key }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="pg-zustand">Zustand <span class="muted small">(nur Automat)</span></label>
+    <select id="pg-zustand" name="zustand">
+      {% for key, (label, _) in pg_zustand.items() %}
+      <option value="{{ key }}" {{ 'selected' if key == 'intakt_nacht' else '' }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="pg-umfeld">Umfeld <span class="muted small">(nur Automat)</span></label>
+    <select id="pg-umfeld" name="umfeld">
+      {% for key, (label, _) in pg_umfeld.items() %}
+      <option value="{{ key }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="pg-beleuchtung">Beleuchtung</label>
+    <select id="pg-beleuchtung" name="beleuchtung">
+      {% for key, (label, _) in pg_beleuchtung.items() %}
+      <option value="{{ key }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label for="pg-bewegung">Kamerabewegung</label>
+    <select id="pg-bewegung" name="bewegung">
+      {% for key, (label, _) in pg_bewegung.items() %}
+      <option value="{{ key }}">{{ label }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-primary">Prompt bauen</button>
+    {% for key, p in pg_master.items() %}
+    <button type="button" class="btn btn-ghost"
+            hx-get="/broll/prompt?preset={{ key }}" hx-target="#prompt-out" hx-swap="innerHTML">
+      {{ p.label }}</button>
+    {% endfor %}
+  </form>
+  <div class="kategorie-presets">
+    <span class="muted small">Kategorie-Presets (passend zur Szenen-Rolle im Clip):</span>
+    {% for key, p in pg_kategorien.items() %}
+    <button type="button" class="btn btn-ghost btn-sm"
+            hx-get="/broll/prompt?kategorie={{ key }}" hx-target="#prompt-out" hx-swap="innerHTML">
+      {{ p.label }}</button>
+    {% endfor %}
+  </div>
+  <div id="prompt-out"></div>
+  <p class="muted small">{{ pg_workflow }}</p>
+</section>
+
+<section class="panel">
   <h2>Neuen Clip hochladen</h2>
   {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
   <form method="post" action="/broll" enctype="multipart/form-data" class="upload-form">

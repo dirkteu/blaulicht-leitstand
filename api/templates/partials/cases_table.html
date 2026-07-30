@@ -21,12 +21,16 @@
   {%- endif -%}
 {%- endmacro %}
 
+{# WICHTIG: Dieses Partial liefert den Container #cases-table-wrap MIT, deshalb
+   ersetzt sich der Poller per outerHTML selbst. Mit innerHTML (frueher) landete
+   bei jedem Durchlauf ein weiteres #cases-table-wrap IM bestehenden — doppelte
+   IDs, und die Poller vervielfachten sich mit jedem Zyklus. #}
 <div id="cases-table-wrap"
      hx-get="/partials/cases-table"
      hx-trigger="every 8s"
      hx-include="#min_score_input,#state_filter_input"
-     hx-target="#cases-table-wrap"
-     hx-swap="innerHTML">
+     hx-target="this"
+     hx-swap="outerHTML">
 
   <div class="filters">
     <div class="filter-group">
@@ -37,7 +41,7 @@
              hx-post="/config/min-score"
              hx-trigger="change"
              hx-target="#cases-table-wrap"
-             hx-swap="innerHTML"
+             hx-swap="outerHTML"
              hx-include="#state_filter_input">
     </div>
     <div class="filter-group">
@@ -46,7 +50,7 @@
               hx-get="/partials/cases-table"
               hx-trigger="change"
               hx-target="#cases-table-wrap"
-              hx-swap="innerHTML"
+              hx-swap="outerHTML"
               hx-include="#min_score_input">
         <option value="">Alle</option>
         {% for s in states %}
@@ -73,7 +77,7 @@
       {% for c in cases %}
       <tr>
         <td class="col-source">{{ source_icon(c.source) }}</td>
-        <td class="col-time">{{ c.created_at[:16].replace('T', ' ') if c.created_at else '—' }}</td>
+        <td class="col-time">{{ c.created_at | dt_de }}</td>
         <td class="col-score"><span class="score-chip">{{ c.score }}</span></td>
         <td class="col-region">{{ c.ort or c.region or '—' }}{% if c.warnung %} <span class="warn-flag" title="{{ c.warnung }}">⚠</span>{% endif %}</td>
         <td class="col-tat">{{ c.tat or '—' }}</td>

@@ -1,0 +1,56 @@
+{# Lektor-Vorschlag: Vorher/Nachher je Szene.
+
+   Bewusst KEIN eigener Speicher-Endpunkt und kein JavaScript: Dieses Panel ist
+   selbst ein Formular auf das bestehende /retts. Die Textareas sind mit dem
+   neuen Text vorbelegt und bleiben editierbar, die Bildschirmtexte laufen
+   unveraendert als hidden inputs mit. Abschicken = speichern + neu vertonen,
+   exakt wie beim Skript-Formular darueber. #}
+{% macro ampel(l) -%}
+  <span class="lb lb-{{ l.ampel }}" title="Wiener Sachtextformel — je kleiner, desto leichter">
+    {{ l.stufe }}</span>
+{%- endmacro %}
+
+<div class="panel lektor-panel">
+  <h2>Lektor-Vorschlag</h2>
+  <p class="muted small">
+    Links der aktuelle Text, rechts der geglättete. Nichts ist gespeichert —
+    du kannst rechts noch tippen und übernimmst dann mit dem Knopf unten.
+  </p>
+
+  <form method="post" action="/cases/{{ case.id }}/retts" class="script-form">
+    {% for v in vorschlaege %}
+    <div class="scene-card">
+      <div class="scene-head">
+        <span class="scene-role">{{ v.role }}</span>
+        {% if not v.uebernommen and v.grund %}
+        <span class="lektor-grund">{{ v.grund }}</span>
+        {% endif %}
+      </div>
+
+      <div class="lektor-diff">
+        <div class="lektor-alt">
+          <label>Vorher {{ ampel(v.lesbarkeit_alt) }}</label>
+          <p class="lektor-text">{{ v.alt or '—' }}</p>
+          {% for m in v.lesbarkeit_alt.marker %}
+          <span class="lb-marker">{{ m }}</span>
+          {% endfor %}
+        </div>
+        <div class="lektor-neu">
+          <label>Nachher {{ ampel(v.lesbarkeit_neu) }}</label>
+          <textarea name="scene_{{ v.i }}_vo" rows="3">{{ v.neu }}</textarea>
+          {% for m in v.lesbarkeit_neu.marker %}
+          <span class="lb-marker">{{ m }}</span>
+          {% endfor %}
+        </div>
+      </div>
+
+      {# Bildschirmtexte fasst der Lektor nicht an — unveraendert mitschicken,
+         damit /retts die Szenenstruktur vollstaendig zurueckbekommt. #}
+      <input type="hidden" name="scene_{{ v.i }}_caption"
+             value="{{ scenes[v.i].caption or '' }}">
+    </div>
+    {% endfor %}
+
+    <button type="submit" class="btn btn-primary">Vorschlag übernehmen &amp; neu vertonen</button>
+  </form>
+</div>

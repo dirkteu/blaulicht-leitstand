@@ -1,0 +1,46 @@
+{# Statusband: was arbeitet die Pipeline gerade?
+   Pollt sich SELBST alle 5 s und ersetzt sich per outerHTML — deshalb steht
+   hx-target="this"/hx-swap="outerHTML". (Mit innerHTML wuerde sich dieser
+   Container bei jedem Durchlauf in sich selbst verschachteln.) #}
+<div id="statusbar"
+     class="statusbar{% if aktiv %} statusbar-aktiv{% endif %}"
+     hx-get="/partials/status"
+     hx-trigger="every 5s"
+     hx-target="this"
+     hx-swap="outerHTML">
+
+  <div class="status-head">
+    <span class="status-lamp{% if not redis_ok or not db_ok %} lamp-fehler{% elif aktiv %} lamp-aktiv{% else %} lamp-ruhe{% endif %}"></span>
+    <strong>
+      {% if not redis_ok %}Queue nicht erreichbar
+      {% elif not db_ok %}Datenbank nicht erreichbar
+      {% elif aktiv %}Pipeline arbeitet
+      {% else %}Bereit{% endif %}
+    </strong>
+    <span class="status-stand" title="Letzte Aktualisierung">Stand {{ stand }}</span>
+  </div>
+
+  {% if queues %}
+  <div class="status-queues">
+    {% for q in queues %}
+    <span class="status-chip{% if q.laufend %} chip-laufend{% elif q.wartend %} chip-wartend{% endif %}"
+          title="{{ q.label }}: {{ q.laufend }} laufend, {{ q.wartend }} wartend{% if q.fehler %}, {{ q.fehler }} fehlgeschlagen{% endif %}">
+      {{ q.label }}
+      {% if q.laufend %}<b>{{ q.laufend }}</b>{% endif %}
+      {% if q.wartend %}<i>+{{ q.wartend }}</i>{% endif %}
+      {% if q.fehler %}<em class="chip-fehler">{{ q.fehler }}</em>{% endif %}
+    </span>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% if zustaende %}
+  <div class="status-states">
+    {% for z in zustaende %}
+    <a class="status-state" href="/?state={{ z.value }}" title="Nur {{ z.label }} anzeigen">
+      {{ z.label }} <span class="status-num">{{ z.anzahl }}</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>

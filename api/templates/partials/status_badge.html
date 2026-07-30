@@ -5,5 +5,5 @@
      hx-swap="outerHTML">
   <span class="badge badge-lg badge-{{ case.state }}">{{ case.state | state_label }}</span>
   {% if case.error %}<span class="badge badge-error">Fehler: {{ case.error }}</span>{% endif %}
-  <span class="muted small">aktualisiert: {{ (case.updated_at or '')[:19].replace('T',' ') or '—' }}</span>
+  <span class="muted small">aktualisiert: {{ case.updated_at | dt_de }}</span>
 </div>

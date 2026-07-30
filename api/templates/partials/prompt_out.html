@@ -1,0 +1,14 @@
+{# Ergebnis des Prompt-Generators (HTMX-Ziel #prompt-out auf /broll) #}
+{% if error %}
+<div class="flash flash-error">{{ error }}</div>
+{% elif prompt %}
+{% if ziel_kategorie %}
+<div class="flash">🎬 Ziel-Kategorie: <strong>{{ ziel_kategorie }}</strong> — fertigen Clip unten
+  mit Kategorie „{{ ziel_kategorie }}" hochladen (wird automatisch <code>broll_{{ ziel_kategorie }}_NN.mp4</code>).</div>
+{% endif %}
+<textarea id="prompt-text" class="prompt-text" readonly rows="12">{{ prompt }}</textarea>
+<button type="button" class="btn btn-primary btn-sm" id="prompt-copy"
+        onclick="navigator.clipboard.writeText(document.getElementById('prompt-text').value)
+                 .then(()=>{this.textContent='✓ Kopiert';setTimeout(()=>this.textContent='Prompt kopieren',1500);});">
+  Prompt kopieren</button>
+{% endif %}

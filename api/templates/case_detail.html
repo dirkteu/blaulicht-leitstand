@@ -21,7 +21,7 @@
   {% endif %}
   <table class="facts-table">
     <tr><th>Tat</th><td>{{ facts.tat or '—' }}</td></tr>
-    <tr><th>Datum / Zeit</th><td>{{ facts.datum or '—' }} {{ facts.zeit or '' }}</td></tr>
+    <tr><th>Datum / Zeit</th><td>{{ facts.datum | datum_de }} {{ facts.zeit or '' }}</td></tr>
     <tr{% if case.warnung %} class="row-warn"{% endif %}><th>Ort</th><td>{{ facts.ort or case.region or '—' }}{% if case.warnung %} ⚠{% endif %}</td></tr>
     <tr><th>Täter (Anzahl)</th><td>{{ facts.taeter_anzahl if facts.taeter_anzahl is not none else '—' }}</td></tr>
     <tr><th>Werkzeug</th><td>{{ facts.werkzeug or '—' }}</td></tr>
@@ -34,7 +34,18 @@
 </section>
 
 <section class="panel">
-  <h2>Skript (pro Szene editierbar)</h2>
+  <div class="panel-head">
+    <h2>Skript (pro Szene editierbar)</h2>
+    {% if scenes %}
+    <button class="btn btn-outline btn-sm"
+            hx-post="/cases/{{ case.id }}/lektor"
+            hx-target="#lektor-out" hx-swap="innerHTML"
+            hx-indicator="#lektor-laeuft">
+      Text glätten (Lektor)
+    </button>
+    <span id="lektor-laeuft" class="htmx-indicator muted small">Lektor arbeitet …</span>
+    {% endif %}
+  </div>
   {% if scenes %}
   <form method="post" action="/cases/{{ case.id }}/retts" class="script-form">
     {% for sc in scenes %}
@@ -42,6 +53,10 @@
       <div class="scene-head">
         <span class="scene-role">{{ sc.role }}</span>
         <span class="muted small">{{ sc.t_start }}s – {{ sc.t_end }}s · B-Roll: {{ sc.broll }} · SFX: {{ sc.sfx }}</span>
+        {% set lb = lesbarkeit[loop.index0] %}
+        <span class="lb lb-{{ lb.ampel }}"
+              title="Lesbarkeit (Wiener Sachtextformel){% for m in lb.marker %} · {{ m }}{% endfor %}">
+          {{ lb.stufe }}</span>
       </div>
       <label>Sprechtext</label>
       <textarea name="scene_{{ loop.index0 }}_vo" rows="2">{{ sc.vo or '' }}</textarea>
@@ -55,6 +70,9 @@
   <p class="muted">Noch kein Skript vorhanden — Analyse ausstehen oder läuft.</p>
   {% endif %}
 </section>
+
+{# Zielcontainer fuer den Lektor-Vorschlag (bleibt leer, bis der Knopf gedrueckt wird) #}
+<div id="lektor-out"></div>
 
 <section class="panel">
   <h2>Vertonung &amp; Clip</h2>
