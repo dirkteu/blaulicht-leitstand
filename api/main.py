@@ -617,6 +617,9 @@ async def broll_upload(request: Request, kategorie: str = Form(...), file: Uploa
                 "files": files,
                 "kategorien": BROLL_KATEGORIEN,
                 "error": f'Unbekannte Kategorie „{kategorie}".',
+                # broll.html rendert IMMER auch den Prompt-Generator — ohne
+                # diesen Kontext knallt Jinja mit UndefinedError (500).
+                **_prompt_generator_ctx(),
             },
             status_code=400,
         )
@@ -639,5 +642,6 @@ async def broll_upload(request: Request, kategorie: str = Form(...), file: Uploa
     return templates.TemplateResponse(
         request,
         "broll.html",
-        {"files": files, "kategorien": BROLL_KATEGORIEN, "error": None},
+        {"files": files, "kategorien": BROLL_KATEGORIEN, "error": None,
+         **_prompt_generator_ctx()},
     )
