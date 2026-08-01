@@ -43,17 +43,25 @@ DISCLAIMER = (
 # ---------------------------------------------------------------------------
 # B-ROLL-BIBLIOTHEK — PORTIERT aus script_gen.py (Dateinamen wie im Bucket `broll`)
 # ---------------------------------------------------------------------------
-# POOL-GROESSE: aktuell 1 je Kategorie (Test „ein Clip pro Kategorie") — der
-# Picker waehlt so immer broll_<kategorie>_01.mp4, jede Szene bekommt echtes
-# B-Roll. Sobald mehr Clips hochgeladen sind: obere Grenze je Zeile erhoehen
-# (z. B. range(1, 5) fuer 4 Varianten) — Namen bleiben broll_<kategorie>_NN.mp4.
+# POOL-GROESSE: die obere Grenze je Zeile muss zu den Dateien im Bucket passen.
+# Namen bleiben broll_<kategorie>_NN.mp4; der Picker waehlt deterministisch per
+# Hash, damit derselbe Fall immer dieselben Clips bekommt.
+#
+# `effect` startet bewusst bei 2, nicht bei 1: broll_effekt_01.mp4 ist der
+# GENERIERTE Clip vom 26.07. mit einem anderen Automaten. 02-08 sind die aus
+# echten Tatortfotos gebauten Clips (31.07., siehe PROJEKTBUCH_BROLL.md) — sie
+# zeigen drei reale Tatorte. Nimmt man 01 mit in den Pool, zeigt jedes achte
+# Video wieder einen fremden Automaten, also genau die Inkonsistenz, gegen die
+# das ganze Verfahren gebaut wurde.
+#
+# Die uebrigen Kategorien stehen weiter auf 1 — dort liegt je ein Clip.
 ASSETS = {
     "street":    [f"broll_strasse_{i:02d}.mp4"   for i in range(1, 2)],
     "blaulicht": [f"broll_blaulicht_{i:02d}.mp4" for i in range(1, 2)],
     "cctv":      [f"broll_cctv_{i:02d}.mp4"      for i in range(1, 2)],
     "weather":   [f"broll_wetter_{i:02d}.mp4"    for i in range(1, 2)],
     "location":  [f"broll_kulisse_{i:02d}.mp4"   for i in range(1, 2)],
-    "effect":    [f"broll_effekt_{i:02d}.mp4"    for i in range(1, 2)],
+    "effect":    [f"broll_effekt_{i:02d}.mp4"    for i in range(2, 9)],
 }
 
 # Welche B-Roll-Kategorie passt zu welcher Szenen-Rolle

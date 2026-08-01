@@ -33,14 +33,37 @@ from typing import Optional
 # ---------------------------------------------------------------------------
 KAMERA_FIX = "Documentary still, shot on 35mm lens, handheld eyewitness perspective."
 
-STIL_FIX = (
+STIL_BASIS = (
     "Gritty photojournalistic aesthetic, cold and tense atmosphere, 4k resolution. "
     "Authentic Germany. No text watermarks, no readable license plates, "
-    "no recognizable faces. STRICT TEXT RULE: the ONLY readable words allowed "
+    "no recognizable faces."
+)
+
+# Textregel fuer GENERIERTE Bilder. Dort ist erfundene Fantasieschrift das Risiko.
+TEXT_REGEL_GENERIERT = (
+    " STRICT TEXT RULE: the ONLY readable words allowed "
     "anywhere in the image are \"ACHTUNG\", \"ab 18\" and \"POLIZEI\". Every other "
     "sticker, label, sign, logo or lettering must be tiny, generic and blurred "
     "beyond legibility — absolutely no invented words, no gibberish lettering."
 )
+
+# Textregel fuer BEARBEITETE ECHTFOTOS. Hier kehrt sich die obige Regel um und
+# richtet Schaden an — belegt am 31.07.2026 am Wandautomaten mit Absperrband:
+# Das Modell hielt die echte Aufschrift "POLIZEIABSPERRUNG" fuer verboten und
+# schrieb sie auf die erlaubte Wortliste um; heraus kam "ACHTUNG · ab 18 ·
+# POLIZEI" auf einem Polizei-Absperrband. Dieselbe Regel leerte eine
+# beschriftete Werbetafel und duennte das Streugut aus, obwohl der Vordergrund
+# im Prompt dreimal als unantastbar bezeichnet war.
+# Echte Schrift auf einem echten Foto ist keine Halluzination, sondern Beleg.
+TEXT_REGEL_ECHTFOTO = (
+    " TEXT RULE: this is a photograph of a real scene. Leave every existing "
+    "word, sticker, label and piece of lettering exactly as it is, unchanged and "
+    "unmoved. Do not rewrite, replace, blur or remove any text that is already "
+    "in the image, and do not invent new text."
+)
+
+# Unveraendert fuer alle bestehenden Aufrufer (Platten, Kategorien, Master).
+STIL_FIX = STIL_BASIS + TEXT_REGEL_GENERIERT
 
 # Der EINE Automat (nach den Original-Fotos des Nutzers): weiss-graues
 # Gehaeuse, dunkelblaue Front mit gruen-weissen Swoosh-Linien, Tasten-Spalte
@@ -60,6 +83,66 @@ AUTOMAT_FIX = (
     "tray at the bottom with a red \"ACHTUNG\" warning label; thin red vertical "
     "LED strip on the left edge. Absolutely NO glass snack front, NO shelves. "
     "Always this exact machine."
+)
+
+# ---------------------------------------------------------------------------
+# PIXEL-WEG (seit 31.07.2026) — Bausteine fuer die Kette
+# echtes Foto -> Freisteller -> leere Platte -> Komposit -> Bild-zu-Video.
+# Konsistenz kommt hier aus PIXELN, nicht aus Text: der Automat wird nie
+# generiert, sondern als freigestelltes Foto ins Bild gesetzt. Deshalb darf
+# AUTOMAT_FIX in einem Platten-Prompt NIE vorkommen.
+# ---------------------------------------------------------------------------
+
+# Raeumt die Platte leer. Ohne diese Klausel stellt das Modell irgendetwas hin,
+# und beim Compositing steht das Wrack dann in einer moeblierten Szene.
+LEER_FIX = (
+    "EMPTY SCENE, background plate: the lower two thirds of the frame are "
+    "completely clear ground. Absolutely nothing lying on the ground: no "
+    "objects, no debris, no machine, no vending machine, no boxes, no people, "
+    "no vehicles, no bicycles."
+)
+
+# ---------------------------------------------------------------------------
+# UMFAERB-WEG (seit 31.07.2026) — der GUENSTIGERE und GENAUERE Weg.
+#
+# Statt freizustellen und in eine generierte Platte zu setzen, wird das echte
+# Tagfoto per Bild-Edit auf Nacht umgefaerbt und dabei nur der Hintergrund
+# ersetzt. Die Perspektive kann nicht kippen, weil sie nie verlassen wird.
+# Kostenvergleich am belegten Durchlauf: Bildvorbereitung 12 Credits gegenueber
+# 90 fuer zwei Clips — der Bildteil ist ein Viertel EINES Clips.
+#
+# Der Komposit-Weg bleibt richtig, wenn das Objekt an einen ANDEREN Ort soll.
+# ---------------------------------------------------------------------------
+
+VORDERGRUND_TABU = (
+    "the wrecked machine, its housing, the fallen front panel, every internal "
+    "part, the ground it lies on, the kerb and every single piece of debris "
+    "scattered around it. Identical position, identical shape, identical "
+    "damage, identical perspective and camera angle. Do not move, add, remove "
+    "or redesign anything in the lower half of the image."
+)
+
+HINTERGRUND_ERSATZ = (
+    "remove every building, fence, house number, sign and street furniture "
+    "behind the scene. In their place put a dense dark wall of unlit shrubs and "
+    "overgrown trees, so that no landmark of any kind remains recognisable. "
+    "The location must not be identifiable."
+)
+
+# Woertlich in JEDEN Anim-Prompt (Bild-zu-Video). Haelt Objekt und Szene fest.
+SCHUTZFORMEL = (
+    "Keep the machine, its position and the entire scene exactly as in the "
+    "image. Do not add, remove or change any object. No people, no vehicles, "
+    "no cuts."
+)
+
+# Diese Woerter loesen den Moderationsfilter aus — AUCH VERNEINT. Ein Prompt
+# mit "no fire, no flames, no sparks" wurde als `nsfw` abgelehnt (31.07.2026,
+# identisches Bildmaterial lief ohne die Woerter durch). Der Filter wertet
+# Wortlisten ohne Verneinung. Statt "kein Feuer" also gar nichts sagen.
+ANIM_VERBOTEN = (
+    "fire", "flame", "flames", "spark", "sparks", "explosion", "explode",
+    "blast", "detonate", "burning",
 )
 
 
@@ -125,6 +208,75 @@ UMFELD: dict[str, tuple[str, str]] = {
         "Only the machine, centered, full machine visible, mounted on a plain "
         "neutral dark wall about 1 meter above the ground (clearly floating "
         "above the floor, never standing on it), nothing else in the frame.",
+    ),
+}
+
+# BLICKWINKEL — kein Fixblock, sondern PFLICHT-PARAMETER je Objektfoto.
+#
+# Warum das keine Konstante sein darf: Ein Freisteller ist ein 2D-Ausschnitt mit
+# EINGEBACKENEM Blickwinkel. Er laesst sich nicht drehen und nicht kippen. Also
+# muss sich die Platte nach dem Foto richten — nie umgekehrt. Wurde am
+# 31.07.2026 teuer gelernt: eine feste 45-Grad-Konstante, geschrieben nach dem
+# ersten Wrackfoto, auf ein zweites Foto mit 25-30 Grad angewendet. Ergebnis
+# unbrauchbar, egal wie sauber Freisteller und Lichtangleichung waren.
+#
+# Den Wert am Objektfoto ablesen: Sieht man viel von den OBERSEITEN der Objekte,
+# ist die Kamera hoch (steil). Sieht man ueberwiegend die Vorderseiten, ist sie
+# auf Augenhoehe (flach).
+BLICKWINKEL: dict[str, tuple[str, str]] = {
+    "steil": (
+        "Steil von oben (~45°, Oberseiten gut sichtbar)",
+        "Elevated high-angle viewpoint looking steeply down at the ground from "
+        "about 2.5 meters above, roughly 45 degrees.",
+    ),
+    "leicht": (
+        "Leicht erhöht (~25–30°, Augenhöhe im Stehen)",
+        "Slightly elevated viewpoint at standing eye height, about 1.6 meters "
+        "above the ground, looking down at roughly 25 degrees.",
+    ),
+    "flach": (
+        "Flach (~10°, fast auf Bodenhöhe)",
+        "Low viewpoint close to the ground, camera about 0.8 meters high, "
+        "looking almost horizontally across the ground.",
+    ),
+}
+
+# ORT — Umgebung der LEEREN Platte. Nicht mit UMFELD verwechseln: UMFELD sagt,
+# wie der Automat montiert ist, und setzt ihn damit voraus. ORT beschreibt nur
+# Boden und Hintergrund, in die spaeter etwas hineinkomponiert wird.
+ORT: dict[str, tuple[str, str]] = {
+    "bauzaun": (
+        "Bauzaun am Grünstreifen",
+        "A strip of dry unkempt grass verge on the left, a concrete kerb "
+        "running diagonally through the middle, wet asphalt pavement filling "
+        "the right side. Behind and above: a construction site fence of dark "
+        "grey privacy mesh panels, dense dark trees and bushes rising behind "
+        "it, one distant street lamp glowing.",
+    ),
+    "hauswand": (
+        "An der Hauswand",
+        "Cracked pavement slabs in the foreground meeting the plain rendered "
+        "wall of a typical German residential building, a narrow strip of weeds "
+        "at the base of the wall, downpipe and a closed roller shutter, no "
+        "windows facing the camera.",
+    ),
+    "parkplatz": (
+        "Supermarkt-Parkplatz",
+        "Wet empty asphalt with faded white parking bay markings, a low "
+        "concrete wheel stop, a trimmed hedge and a tall lamp post at the far "
+        "edge, the dark flat facade of a retail building behind it.",
+    ),
+    "feldweg": (
+        "Feldweg am Ortsrand",
+        "A gravel track with grass growing down the middle, tall dry grass and "
+        "nettles on both sides, a wooden fence post, open dark fields and a "
+        "distant treeline behind, no buildings.",
+    ),
+    "tankstelle": (
+        "Hinter der Tankstelle",
+        "Oil-stained concrete apron in the foreground, a kerb and a strip of "
+        "gravel, stacked crates and a closed metal roller door on a low utility "
+        "building behind, the cold spill of a canopy light from off-frame left.",
     ),
 }
 
@@ -234,6 +386,101 @@ def build_prompt(beleuchtung: str,
         lines.append(f"[Kamerabewegung]: {pick(KAMERABEWEGUNG, kamerabewegung, 'Kamerabewegung')}")
 
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# PIXEL-WEG — Platten- und Anim-Prompts
+# ---------------------------------------------------------------------------
+
+def build_platte_prompt(beleuchtung: str, ort: str, blickwinkel: str) -> str:
+    """Prompt fuer eine LEERE Nacht-Platte bauen (Hintergrund ohne Objekt).
+
+    Bewusst OHNE AUTOMAT_FIX: das Objekt kommt als freigestelltes Foto ins Bild
+    und darf vom Modell nicht erfunden werden. Wer hier den Automaten
+    mitbeschreibt, hat wieder zwei verschiedene Automaten.
+
+    `blickwinkel` ist PFLICHT und wird am Objektfoto abgelesen, nicht geraten.
+    Passt er nicht, ist die Platte unbrauchbar — der Freisteller laesst sich
+    nachtraeglich nicht in eine andere Perspektive bringen.
+    """
+    if beleuchtung not in BELEUCHTUNG:
+        raise ValueError(f"Unbekannte Beleuchtung: {beleuchtung!r} "
+                         f"(erlaubt: {', '.join(BELEUCHTUNG)})")
+    if ort not in ORT:
+        raise ValueError(f"Unbekannter Ort: {ort!r} (erlaubt: {', '.join(ORT)})")
+    if blickwinkel not in BLICKWINKEL:
+        raise ValueError(f"Unbekannter Blickwinkel: {blickwinkel!r} "
+                         f"(erlaubt: {', '.join(BLICKWINKEL)})")
+
+    return "\n".join([
+        f"[Kamera]: {KAMERA_FIX} {BLICKWINKEL[blickwinkel][1]}",
+        f"[Beleuchtung]: {BELEUCHTUNG[beleuchtung][1]}",
+        f"[Ort]: {ORT[ort][1]}",
+        f"[Leer]: {LEER_FIX}",
+        f"[Stil]: {STIL_FIX}",
+    ])
+
+
+def build_umfaerben_prompt(beleuchtung: str, hintergrund: str = HINTERGRUND_ERSATZ,
+                           vordergrund: str = VORDERGRUND_TABU) -> str:
+    """Prompt fuer den Umfaerb-Weg bauen (echtes Tagfoto -> Nachtszene).
+
+    Der guenstigere und genauere Weg: statt das Objekt freizustellen und in eine
+    generierte Platte zu setzen, wird das ORIGINALFOTO umgefaerbt. Die
+    Perspektive kann dabei nicht kippen, weil sie nie verlassen wird — das
+    Problem, an dem der Komposit-Weg am 31.07.2026 gescheitert ist.
+
+    Dreiteilig, und die Reihenfolge ist Absicht: erst was bleiben MUSS, dann was
+    weg SOLL, dann das Licht. Umgekehrt formuliert raeumt das Modell zu viel weg.
+
+    Nutzt bewusst TEXT_REGEL_ECHTFOTO statt der STRICT TEXT RULE aus STIL_FIX —
+    Begruendung samt Beleg steht bei der Konstante. Wer hier STIL_FIX einsetzt,
+    bekommt umgeschriebene Absperrbaender zurueck.
+    """
+    if beleuchtung not in BELEUCHTUNG:
+        raise ValueError(f"Unbekannte Beleuchtung: {beleuchtung!r} "
+                         f"(erlaubt: {', '.join(BELEUCHTUNG)})")
+    return "\n\n".join([
+        "Two separate instructions, both mandatory.",
+        f"FOREGROUND, keep completely untouched: {vordergrund}",
+        f"BACKGROUND, replace entirely: {hintergrund}",
+        f"Relight the whole scene from daylight to night-time: "
+        f"{BELEUCHTUNG[beleuchtung][1]} {STIL_BASIS}{TEXT_REGEL_ECHTFOTO}",
+    ])
+
+
+def pruefe_anim_prompt(text: str) -> list[str]:
+    """Verbotene Woerter in einem Anim-Prompt finden (leere Liste = sauber).
+
+    Harte Pruefung statt blossem Vorsatz — Prompt-Regeln allein haben in diesem
+    Projekt mehrfach versagt. Siehe ANIM_VERBOTEN fuer die Begruendung.
+    """
+    klein = text.lower()
+    return [w for w in ANIM_VERBOTEN if w in klein]
+
+
+def build_anim_prompt(bewegung: str, atmosphaere: str = "") -> str:
+    """Anim-Prompt fuer Bild-zu-Video bauen (Kamerabewegung + Schutzformel).
+
+    `bewegung` beschreibt NUR die Kamera, `atmosphaere` optional Dunst o.ae.
+    Das Objekt wird mit keinem Wort beschrieben — es steht ja im Startbild.
+
+    Verbotene Woerter loesen ValueError aus, statt eine abgelehnte Generierung
+    zu riskieren.
+    """
+    teile = [bewegung.strip()]
+    if atmosphaere.strip():
+        teile.append(atmosphaere.strip())
+    teile.append(SCHUTZFORMEL)
+    prompt = " ".join(teile)
+
+    gefunden = pruefe_anim_prompt(prompt)
+    if gefunden:
+        raise ValueError(
+            f"Anim-Prompt enthaelt Filter-Woerter: {', '.join(gefunden)}. "
+            "Auch verneint nicht verwenden: der Moderationsfilter wertet ohne "
+            "Verneinung und lehnt die Generierung ab.")
+    return prompt
 
 
 # ---------------------------------------------------------------------------

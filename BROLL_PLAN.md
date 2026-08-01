@@ -3,6 +3,48 @@
 Gemeinsames Verständnis aus der Grill-Session. Gilt als Vorgabe für den Umbau von
 `core/broll_prompts.py`, der `/broll`-Seite und die erste MCP-Generierungsrunde.
 
+---
+
+## ⚠️ TEILWEISE ÜBERHOLT (31.07.2026) — erst hier weiterlesen
+
+Der **Mechanismus** dieses Plans (Konsistenz über ein Masterbild statt über Text)
+hat sich bestätigt. Der **Weg zum Master** ist überholt: Er kommt jetzt aus einem
+echten Foto statt aus einer Generierung. Konkret:
+
+| Punkt | Stand |
+|---|---|
+| Beschluss 4, Master-Kette Schritt „Frame aus `hf_20260726_195621` extrahieren" | **überholt** — der Master entsteht aus einem echten Wrackfoto des Users |
+| Beschluss 4, „gesprengt-Master per Bild-Edit ableiten" | **überholt** — kein Bild-Edit mehr nötig |
+| Beschluss 4, „ACHTUNT → ACHTUNG korrigieren" | **entfällt** — ein echtes Foto hat keine Halluzinations-Schrift |
+| Beschluss 5, „Variation NUR über Kamerabewegung, Beleuchtung/Ort eingefroren" | **aufgehoben** — siehe unten |
+| Beschluss 7, „OAuth durch den User noch offen" | **erledigt** — der claude.ai-Connector ist autorisiert |
+| Beschlüsse 1, 2, 3, 6, 8 | **gelten unverändert** |
+
+**Warum Beschluss 5 fällt:** Das Einfrieren von Ort und Beleuchtung war nötig,
+weil Textprompts den Automaten nicht stillhalten konnten — jede Ortsänderung war
+ein Risiko, einen anderen Automaten zu bekommen. Er kommt jetzt als
+freigestelltes Foto ins Bild und **kann** nicht mehr variieren. Ort und
+Beleuchtung dürfen deshalb wieder frei wechseln. Die Vielfalt, die dieser Plan
+opfern musste, ist zurück.
+
+**Der neue Weg** — zwei Betriebsarten (Belege in BETRIEB.md, Abschnitte
+„B-Roll aus echtem Bildmaterial" und „Umfärben schlägt Komposit"):
+
+```
+STANDARD — umfärben:
+echtes Foto → gpt_image_2 (Nacht + Hintergrund ersetzt) → 9:16 beschneiden
+            → tools/kader.py → seedance_2_0 i2v → Clip
+
+NUR wenn das Objekt an einen ANDEREN Ort soll — komposit:
+echtes Foto → tools/freistellen.py → soul_location (LEERE Platte)
+            → tools/komposit.py → tools/kader.py → seedance_2_0 i2v → Clip
+```
+
+Der Umfärb-Weg ist günstiger und trifft die Perspektive zwangsläufig, weil er sie
+nie verlässt. Bedient wird beides über den Slash-Command **`/broll`**.
+
+---
+
 ## Warum
 Zwei Higgsfield-Läufe mit wörtlich identischem `[Automat]`-Block lieferten zwei
 verschiedene Automaten (Beweis: `hf_20260726_195621…` = kompakter Pfosten-Automat ✅,
@@ -54,9 +96,12 @@ keine Konsistenz.** Konsistenz kommt ab jetzt aus einem Masterbild, nie mehr aus
    (Rest-Clips auf je 4 auffüllen + neue cctv/blaulicht/strasse-Clips).
    Publish-Guardrails unberührt: nichts wird automatisch veröffentlicht.
 
-## Umsetzungs-Todos (noch nicht begonnen)
-- [ ] Bestes Frame aus `Downloads\hf_20260726_195621_ed84876a….mp4` extrahieren → `assets/master/master_intakt_roh.png`
-- [ ] `core/broll_prompts.py` auf die vier Prompt-Typen umbauen (wetter raus, cctv neu, kulisse/effekt → Anim-Presets, Schutzformel als Konstante)
-- [ ] `/broll`-Seite (api/main.py + Templates) an neue Prompt-Typen anpassen
-- [ ] User: Higgsfield-MCP OAuth freischalten
-- [ ] Runde 1 per MCP ausführen, Ergebnisse vorlegen (Stopp-Regel!)
+## Umsetzungs-Todos (Stand 31.07.2026)
+- [x] ~~Bestes Frame aus `hf_20260726_195621….mp4` extrahieren~~ — hinfällig, Master kommt aus echtem Foto
+- [x] Schutzformel als Konstante — `broll_prompts.SCHUTZFORMEL`, dazu `LEER_FIX`, `ORT`, `ANIM_VERBOTEN`, `build_platte_prompt()`, `build_anim_prompt()`
+- [x] User: Higgsfield-MCP OAuth freischalten — Connector ist autorisiert
+- [x] Runde 1 für `effekt` ausgeführt: 4 Clips, davon 2 empfohlen (`effekt_01_pushin`, `effekt_03_seitwaerts` in `assets/master/`). **Stopp-Regel greift: warten auf Review.**
+- [ ] Freigegebene Clips über die `/broll`-Seite in den Bucket laden
+- [ ] `kulisse`-Master bauen — **blockiert:** braucht Original-Fotos des *unbeschädigten* Automaten
+- [ ] `wetter` aus `core/contracts.py` streichen (Beschluss 1, unverändert offen)
+- [ ] `/broll`-Seite (api/main.py + Templates) um die Platten-Prompts erweitern (optional — der Slash-Command deckt den Weg bereits ab)
