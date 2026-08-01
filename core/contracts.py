@@ -154,8 +154,9 @@ class Bucket(str, Enum):
     THUMBS = "thumbs"
 
 
-# B-Roll-Kategorien (Namensmuster: broll_<kategorie>_NN.mp4)
-BROLL_KATEGORIEN = ("strasse", "blaulicht", "cctv", "wetter", "kulisse", "effekt")
+# B-Roll-Kategorien (Namensmuster: broll_<kategorie>_NN.mp4).
+# `wetter` gestrichen per BROLL_PLAN Beschluss 1 (umgesetzt 01.08.2026).
+BROLL_KATEGORIEN = ("strasse", "blaulicht", "cctv", "kulisse", "effekt")
 
 # Schema in Postgres, in dem die Leitstand-Tabellen liegen (kollisionsfrei).
 DB_SCHEMA = "blaulicht"

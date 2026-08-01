@@ -113,5 +113,5 @@ keine Konsistenz.** Konsistenz kommt ab jetzt aus einem Masterbild, nie mehr aus
       `effekt_01`. Neue SUBJEKT-Einträge in `core/broll_prompts.py`.
       **Damit ist kein B-Roll-Engpass mehr offen — ab hier gilt das Ship-Gate
       (CLAUDE.md §7): veröffentlichen, nicht weiter generieren.**
-- [ ] `wetter` aus `core/contracts.py` streichen (Beschluss 1, unverändert offen)
+- [x] `wetter` aus `core/contracts.py` streichen (Beschluss 1) — **erledigt 01.08.2026** im großen Aufräumen: dazu flogen ASSETS-Eintrag, Preset und die Subjekte regen/nebel
 - [ ] `/broll`-Seite (api/main.py + Templates) um die Platten-Prompts erweitern (optional — der Slash-Command deckt den Weg bereits ab)

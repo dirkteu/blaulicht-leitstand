@@ -71,11 +71,11 @@ EFFEKT_SAETZE = [
 # Fluchtwagen, leere Strasse — freigegeben vom User).
 #
 # Die uebrigen Kategorien stehen weiter auf 1 — dort liegt je ein Clip.
+# `weather` gestrichen per BROLL_PLAN Beschluss 1 (umgesetzt 01.08.2026).
 ASSETS = {
     "street":    [f"broll_strasse_{i:02d}.mp4"   for i in range(1, 2)],
     "blaulicht": [f"broll_blaulicht_{i:02d}.mp4" for i in range(1, 2)],
     "cctv":      [f"broll_cctv_{i:02d}.mp4"      for i in range(2, 8)],
-    "weather":   [f"broll_wetter_{i:02d}.mp4"    for i in range(1, 2)],
     "location":  [f"broll_kulisse_{i:02d}.mp4"   for i in range(1, 2)],
     "effect":    [clip for satz in EFFEKT_SAETZE for clip in satz],
 }

@@ -879,6 +879,31 @@ gewandert, geliefert wurde nichts.
 **Messgröße der Woche:** `state='veroeffentlicht'` ≥ 4 (1 Bestand + 3 neue
 TikTok-Uploads). An dieser einen Zahl wird die Kurskorrektur gemessen.
 
+## Update 2026-08-01 (Großes Aufräumen: Automat-per-Text-Weg komplett entfernt)
+
+Auf User-Anweisung („lösche alles, was wir gar nicht mehr nutzen") wurde alles
+entfernt, was laut Beschlusslage tot war. **Der Automat entsteht ausschließlich
+aus echten Fotos — der gesamte Text→Video-Weg für Automaten ist aus dem Code
+verschwunden**, nicht nur stillgelegt:
+
+- **`core/broll_prompts.py`:** AUTOMAT_FIX, STIL_FIX, TEXT_REGEL_GENERIERT
+  (die Whitelist), ZUSTAND, UMFELD, MASTER_PRESETS, WORKFLOW_HINWEIS,
+  `build_master_prompt()` gelöscht; `build_prompt()` baut nur noch
+  Subjekt-Szenen. Subjekte `regen`/`nebel` (wetter-Motive) gelöscht.
+  KATEGORIE_PRESETS nur noch `blaulicht` (Teil 1) und `cctv` (Teil 3,
+  auf Beschluss 3 umgestellt: Standard-Subjekt `taeter_vorfahrt`).
+- **Beifang mit Substanz:** `build_platte_prompt()` nutzte noch die
+  Whitelist-Textregel — auf einer LEEREN Platte dieselbe Fehlerklasse wie bei
+  den cctv-Clips (Whitelist wird zur Bestellung). Jetzt TEXT_REGEL_SZENE.
+- **`core/contracts.py` + `core/script.py`:** `wetter`/`weather` gestrichen —
+  der seit 26.07. offene Beschluss-1-Todo ist damit erledigt.
+- **/broll-Seite:** Automat-Option, Zustand/Umfeld-Dropdowns, Master-Buttons
+  und Workflow-Hinweis raus; der Generator baut nur noch Szenen-Prompts.
+- Wortlaute aller gelöschten Blöcke: git log und PROJEKTBUCH_BROLL.md.
+
+Geprüft: 6 Smoke-Checks (Prompts bauen, keine Whitelist-Wörter, wetter überall
+raus, Zuteilung läuft), compileall, Jinja-Parse der /broll-Seite.
+
 ## ⚠️ Gemini-TTS: 100 Anfragen pro Tag (2026-07-30 aufgelaufen)
 
 Beim Testen erschöpft: `generate_requests_per_model_per_day, limit: 100,

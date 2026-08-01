@@ -39,13 +39,11 @@ STIL_BASIS = (
     "no recognizable faces."
 )
 
-# Textregel fuer GENERIERTE Bilder. Dort ist erfundene Fantasieschrift das Risiko.
-TEXT_REGEL_GENERIERT = (
-    " STRICT TEXT RULE: the ONLY readable words allowed "
-    "anywhere in the image are \"ACHTUNG\", \"ab 18\" and \"POLIZEI\". Every other "
-    "sticker, label, sign, logo or lettering must be tiny, generic and blurred "
-    "beyond legibility — absolutely no invented words, no gibberish lettering."
-)
+# GELOESCHT (Aufraeumen 01.08.2026): TEXT_REGEL_GENERIERT — die Whitelist
+# (ACHTUNG/ab 18/POLIZEI als einzige erlaubte Woerter) gehoerte zum
+# Automat-per-Text-Weg. Der ist seit BROLL_PLAN verboten („Konsistenz kommt
+# nie mehr aus Text"), und in Szenen ohne Automat wurde die Whitelist zur
+# Bestellung (siehe TEXT_REGEL_SZENE). Wortlaut bei Bedarf: git log.
 
 # Textregel fuer BEARBEITETE ECHTFOTOS. Hier kehrt sich die obige Regel um und
 # richtet Schaden an — belegt am 31.07.2026 am Wandautomaten mit Absperrband:
@@ -87,28 +85,11 @@ TEXT_REGEL_SZENE_POLIZEI = (
     "other words into the scene."
 )
 
-# Unveraendert fuer alle bestehenden Aufrufer (Platten, Kategorien, Master).
-STIL_FIX = STIL_BASIS + TEXT_REGEL_GENERIERT
-
-# Der EINE Automat (nach den Original-Fotos des Nutzers): weiss-graues
-# Gehaeuse, dunkelblaue Front mit gruen-weissen Swoosh-Linien, Tasten-Spalte
-# mit Marken-Miniaturen, "ab 18", ACHTUNG-Ausgabefach, rote LED-Leiste.
-AUTOMAT_FIX = (
-    "A real authentic German cigarette vending machine (Zigarettenautomat): a "
-    "SMALL, COMPACT wall-mounted metal box, about 80 cm tall and 90 cm wide, "
-    "mounted at chest height roughly 1 meter above the ground — it NEVER touches "
-    "the ground and is NEVER a tall floor-standing vending machine (much smaller "
-    "than a person). Off-white / light-grey steel housing; deep-blue front panel "
-    "with abstract flowing green-and-white swoosh line graphics; on the right "
-    "side a vertical column of small square selection buttons, each showing a "
-    "tiny colored cigarette pack thumbnail (recognizable only by pack colors — "
-    "red-white, gold, blue — with NO readable brand names); coin slot and "
-    "banknote/EC-card reader; "
-    "\"ab 18\" sticker and payment symbols at the top; horizontal delivery output "
-    "tray at the bottom with a red \"ACHTUNG\" warning label; thin red vertical "
-    "LED strip on the left edge. Absolutely NO glass snack front, NO shelves. "
-    "Always this exact machine."
-)
+# GELOESCHT (Aufraeumen 01.08.2026): STIL_FIX und AUTOMAT_FIX — beide
+# existierten nur fuer den Automat-per-Text-Weg (Generator-Option „automat",
+# Kategorie-/Master-Presets). Der Automat entsteht seit dem 31.07.
+# ausschliesslich aus echten Fotos (Umfaerben/Komposit); die minutioes
+# gebaute AUTOMAT_FIX-Beschreibung steht in git log und im PROJEKTBUCH.
 
 # ---------------------------------------------------------------------------
 # PIXEL-WEG (seit 31.07.2026) — Bausteine fuer die Kette
@@ -198,43 +179,9 @@ BELEUCHTUNG: dict[str, tuple[str, str]] = {
     ),
 }
 
-ZUSTAND: dict[str, tuple[str, str]] = {
-    "neu": (
-        "Neu / makellos",
-        "Brand-new, pristine and spotless, glossy undamaged housing, colors "
-        "vivid and fresh, in perfect condition.",
-    ),
-    "intakt_nacht": (
-        "Intakt (nachts, unheilvoll)",
-        "Intact and undamaged, standing quiet and ominous in the dark.",
-    ),
-    "gesprengt": (
-        "Gesprengt",
-        "The immediate aftermath of an explosive burglary: the front panel blown "
-        "wide open, heavy metal housing severely bent and buckled, door hanging "
-        "on broken hinges, exposed internal product spirals and wiring, thousands "
-        "of scattered cigarette packs on the ground, thin smoke drifting.",
-    ),
-}
-
-UMFELD: dict[str, tuple[str, str]] = {
-    "wand": (
-        "An der Hauswand",
-        "Mounted on the brick wall of a typical German house on a quiet "
-        "residential street.",
-    ),
-    "pfosten": (
-        "Freistehend am Pfosten",
-        "Free-standing, mounted on one single galvanized steel post at the edge "
-        "of a sidewalk with a green strip.",
-    ),
-    "isoliert": (
-        "Isoliert (nur der Automat)",
-        "Only the machine, centered, full machine visible, mounted on a plain "
-        "neutral dark wall about 1 meter above the ground (clearly floating "
-        "above the floor, never standing on it), nothing else in the frame.",
-    ),
-}
+# GELOESCHT (Aufraeumen 01.08.2026): ZUSTAND und UMFELD — die Auswahllisten
+# gehoerten zum Automat-per-Text-Weg (neu/intakt/gesprengt an Wand/Pfosten/
+# isoliert). Wortlaute in git log.
 
 # BLICKWINKEL — kein Fixblock, sondern PFLICHT-PARAMETER je Objektfoto.
 #
@@ -266,7 +213,8 @@ BLICKWINKEL: dict[str, tuple[str, str]] = {
     ),
 }
 
-# ORT — Umgebung der LEEREN Platte. Nicht mit UMFELD verwechseln: UMFELD sagt,
+# ORT — Umgebung der LEEREN Platte. Nicht mit dem frueheren UMFELD verwechseln
+# (geloescht, gehoerte zum Automat-per-Text-Weg): UMFELD sagte,
 # wie der Automat montiert ist, und setzt ihn damit voraus. ORT beschreibt nur
 # Boden und Hintergrund, in die spaeter etwas hineinkomponiert wird.
 ORT: dict[str, tuple[str, str]] = {
@@ -330,9 +278,10 @@ KAMERABEWEGUNG: dict[str, tuple[str, str]] = {
     ),
 }
 
-# Nicht-Automaten-Motive (blaulicht/strasse/wetter): gleiche Schablone,
-# [Subjekt] ersetzt [Automat]/[Zustand]/[Umfeld]. Kennzeichen-Fix ist hier
-# bewusst eingebaut (Test-Erkenntnis: lesbares Kennzeichen trotz Stil-Verbot).
+# Szenen-Motive (blaulicht/cctv/strasse): SEIT DEM AUFRAEUMEN 01.08.2026 DER
+# EINZIGE Text->Video-Weg — der Automat entsteht nie mehr aus Text.
+# Kennzeichen-Fix ist bewusst eingebaut (Test-Erkenntnis: lesbares
+# Kennzeichen trotz Stil-Verbot).
 SUBJEKT: dict[str, tuple[str, str]] = {
     "polizeiwagen": (
         "Polizeiwagen (Hook)",
@@ -391,16 +340,8 @@ SUBJEKT: dict[str, tuple[str, str]] = {
         "on the asphalt, a lone street light still glowing, empty and eerie "
         "unsolved-case mood.",
     ),
-    "regen": (
-        "Regen unter Laterne",
-        "Heavy rain falling through the cone of a single sodium street lamp on "
-        "an empty wet German street, moody and cinematic.",
-    ),
-    "nebel": (
-        "Nebel über Straße",
-        "Low fog rolling across an empty German street, diffuse halos around "
-        "distant street lights, silhouettes of German houses, cold and ominous.",
-    ),
+    # GELOESCHT (Aufraeumen 01.08.2026): regen, nebel — Wetter-Motive der
+    # gestrichenen Kategorie `wetter` (Beschluss 1). Wortlaute in git log.
 }
 
 
@@ -408,14 +349,13 @@ SUBJEKT: dict[str, tuple[str, str]] = {
 # PROMPT ZUSAMMENBAUEN
 # ---------------------------------------------------------------------------
 def build_prompt(beleuchtung: str,
-                 zustand: Optional[str] = None,
-                 umfeld: Optional[str] = None,
-                 kamerabewegung: Optional[str] = None,
-                 subjekt: Optional[str] = None) -> str:
-    """Fertigen Higgsfield-Prompt im Label-Format bauen.
+                 subjekt: str,
+                 kamerabewegung: Optional[str] = None) -> str:
+    """Fertigen Szenen-Prompt im Label-Format bauen (Text->Video).
 
-    Automaten-Prompt:  build_prompt(beleuchtung, zustand, umfeld[, kamerabewegung])
-    Subjekt-Prompt:    build_prompt(beleuchtung, subjekt=...[, kamerabewegung])
+    SEIT DEM AUFRAEUMEN 01.08.2026 gibt es nur noch Subjekt-Prompts — der
+    fruehere Automaten-Zweig ([Automat]/[Zustand]/[Umfeld]) ist geloescht,
+    weil der Automat ausschliesslich aus echten Fotos entsteht (Pixel-Weg).
 
     Unbekannte Schluessel -> ValueError (Variablen NUR aus den Auswahllisten).
     """
@@ -426,27 +366,15 @@ def build_prompt(beleuchtung: str,
         return d[key][1]
 
     lines = [f"[Kamera]: {KAMERA_FIX}",
-             f"[Beleuchtung]: {pick(BELEUCHTUNG, beleuchtung, 'Beleuchtung')}"]
+             f"[Beleuchtung]: {pick(BELEUCHTUNG, beleuchtung, 'Beleuchtung')}",
+             f"[Subjekt]: {pick(SUBJEKT, subjekt, 'Subjekt')}"]
 
-    if subjekt is not None:
-        lines.append(f"[Subjekt]: {pick(SUBJEKT, subjekt, 'Subjekt')}")
-        # Szene ohne Automat: Whitelist-Regel waere hier eine Bestellung
-        # (siehe TEXT_REGEL_SZENE). POLIZEI nur, wenn das Subjekt die
-        # Beschriftung selbst traegt (Streifenwagen, Absperrband).
-        if "POLIZEI" in SUBJEKT[subjekt][1]:
-            stil = STIL_BASIS + TEXT_REGEL_SZENE_POLIZEI
-        else:
-            stil = STIL_BASIS + TEXT_REGEL_SZENE
+    # Keine lesbare Schrift in generierten Szenen. POLIZEI nur, wenn das
+    # Subjekt die Beschriftung selbst traegt (Streifenwagen, Absperrband).
+    if "POLIZEI" in SUBJEKT[subjekt][1]:
+        lines.append(f"[Stil]: {STIL_BASIS}{TEXT_REGEL_SZENE_POLIZEI}")
     else:
-        if zustand is None or umfeld is None:
-            raise ValueError("Automaten-Prompt braucht zustand UND umfeld "
-                             "(oder subjekt=... fuer Nicht-Automaten-Motive).")
-        lines.append(f"[Automat]: {AUTOMAT_FIX}")
-        lines.append(f"[Zustand]: {pick(ZUSTAND, zustand, 'Zustand')}")
-        lines.append(f"[Umfeld]: {pick(UMFELD, umfeld, 'Umfeld')}")
-        stil = STIL_FIX
-
-    lines.append(f"[Stil]: {stil}")
+        lines.append(f"[Stil]: {STIL_BASIS}{TEXT_REGEL_SZENE}")
 
     if kamerabewegung and kamerabewegung != "keine":
         lines.append(f"[Kamerabewegung]: {pick(KAMERABEWEGUNG, kamerabewegung, 'Kamerabewegung')}")
@@ -478,12 +406,16 @@ def build_platte_prompt(beleuchtung: str, ort: str, blickwinkel: str) -> str:
         raise ValueError(f"Unbekannter Blickwinkel: {blickwinkel!r} "
                          f"(erlaubt: {', '.join(BLICKWINKEL)})")
 
+    # TEXT_REGEL_SZENE, nicht die alte Whitelist: Eine LEERE Platte hat
+    # keinen Automaten, dessen Aufkleber-Woerter man erlauben muesste — die
+    # Whitelist wuerde hier (wie am 01.08. bei cctv belegt) zur Bestellung
+    # und malt "ACHTUNG ab 18"-Schilder in den Hintergrund.
     return "\n".join([
         f"[Kamera]: {KAMERA_FIX} {BLICKWINKEL[blickwinkel][1]}",
         f"[Beleuchtung]: {BELEUCHTUNG[beleuchtung][1]}",
         f"[Ort]: {ORT[ort][1]}",
         f"[Leer]: {LEER_FIX}",
-        f"[Stil]: {STIL_FIX}",
+        f"[Stil]: {STIL_BASIS}{TEXT_REGEL_SZENE}",
     ])
 
 
@@ -499,9 +431,9 @@ def build_umfaerben_prompt(beleuchtung: str, hintergrund: str = HINTERGRUND_ERSA
     Dreiteilig, und die Reihenfolge ist Absicht: erst was bleiben MUSS, dann was
     weg SOLL, dann das Licht. Umgekehrt formuliert raeumt das Modell zu viel weg.
 
-    Nutzt bewusst TEXT_REGEL_ECHTFOTO statt der STRICT TEXT RULE aus STIL_FIX —
-    Begruendung samt Beleg steht bei der Konstante. Wer hier STIL_FIX einsetzt,
-    bekommt umgeschriebene Absperrbaender zurueck.
+    Nutzt bewusst TEXT_REGEL_ECHTFOTO statt einer STRICT-TEXT-Whitelist —
+    Begruendung samt Beleg steht bei der Konstante. Wer hier eine Whitelist
+    einsetzt, bekommt umgeschriebene Absperrbaender zurueck.
     """
     if beleuchtung not in BELEUCHTUNG:
         raise ValueError(f"Unbekannte Beleuchtung: {beleuchtung!r} "
@@ -554,36 +486,24 @@ def build_anim_prompt(bewegung: str, atmosphaere: str = "") -> str:
 # broll_<kategorie>_NN.mp4, siehe contracts.BROLL_KATEGORIEN + script.ROLE_BROLL).
 # Jedes Preset = fertige Baustein-Kombination passend zur Szenen-Rolle im Clip.
 # ---------------------------------------------------------------------------
-KATEGORIE_PRESETS: dict[str, dict[str, Optional[str]]] = {
+# NUR noch die zwei Text->Video-Kategorien der Vier-Teile-Klammer.
+# GELOESCHT (Aufraeumen 01.08.2026): effekt/kulisse (Automat-per-Text —
+# verboten, Echtfoto-Weg), strasse (keine Rolle mehr; fluchtwagen laeuft
+# unter cctv), wetter (Beschluss 1, gestrichen).
+KATEGORIE_PRESETS: dict[str, dict[str, str]] = {
     "blaulicht": {
-        "label": "blaulicht — Hook (Polizei am Tatort)", "rolle": "hook",
+        "label": "blaulicht — Teil 1: Hook (Polizei am Tatort)", "rolle": "hook",
         "subjekt": "polizeiwagen", "beleuchtung": "blaulicht",
-        "zustand": None, "umfeld": None, "bewegung": "push_in",
+        "bewegung": "push_in",
     },
-    "effekt": {
-        "label": "effekt — Eskalation (Automat gesprengt)", "rolle": "eskalation",
-        "subjekt": None, "beleuchtung": "nacht_laterne",
-        "zustand": "gesprengt", "umfeld": "wand", "bewegung": "macro_zoom",
-    },
+    # Beschluss 3: Taeter-Silhouetten OHNE Automat. Das Preset liefert das
+    # Standard-Subjekt; die uebrigen fuenf Taeter-/Flucht-Subjekte sind ueber
+    # das Motiv-Dropdown auf der /broll-Seite erreichbar.
     "cctv": {
-        "label": "cctv — Story (Überwachungs-Look)", "rolle": "story",
-        "subjekt": None, "beleuchtung": "cctv",
-        "zustand": "intakt_nacht", "umfeld": "wand", "bewegung": "cctv_statisch",
-    },
-    "kulisse": {
-        "label": "kulisse — Zahlen (Tatort-Establishing)", "rolle": "zahlen",
-        "subjekt": None, "beleuchtung": "nacht_laterne",
-        "zustand": "intakt_nacht", "umfeld": "pfosten", "bewegung": "push_in",
-    },
-    "strasse": {
-        "label": "strasse — Cliffhanger (Flucht/leer)", "rolle": "cliffhanger",
-        "subjekt": "fluchtwagen", "beleuchtung": "nacht_laterne",
-        "zustand": None, "umfeld": None, "bewegung": "keine",
-    },
-    "wetter": {
-        "label": "wetter — Atmosphäre (Reserve)", "rolle": "—",
-        "subjekt": "regen", "beleuchtung": "nacht_laterne",
-        "zustand": None, "umfeld": None, "bewegung": "keine",
+        "label": "cctv — Teil 3: Täter & Flucht (Überwachungs-Look)",
+        "rolle": "story+zahlen",
+        "subjekt": "taeter_vorfahrt", "beleuchtung": "cctv",
+        "bewegung": "cctv_statisch",
     },
 }
 
@@ -594,39 +514,11 @@ def build_kategorie_prompt(kategorie: str) -> str:
         raise ValueError(f"Unbekannte Kategorie: {kategorie!r} "
                          f"(erlaubt: {', '.join(KATEGORIE_PRESETS)})")
     p = KATEGORIE_PRESETS[kategorie]
-    return build_prompt(beleuchtung=p["beleuchtung"], zustand=p["zustand"],
-                        umfeld=p["umfeld"], kamerabewegung=p["bewegung"],
-                        subjekt=p["subjekt"])
+    return build_prompt(beleuchtung=p["beleuchtung"], subjekt=p["subjekt"],
+                        kamerabewegung=p["bewegung"])
 
 
-# ---------------------------------------------------------------------------
-# MASTER-PRESETS — Standbilder als Konsistenz-Anker.
-# Workflow: Master EINMAL festlegen -> alle Automaten-Clips als Bild->Video
-# aus dem Master ableiten (nur Kamerafahrt animieren), NICHT neu wuerfeln.
-# ---------------------------------------------------------------------------
-MASTER_PRESETS: dict[str, dict[str, str]] = {
-    "master_automat_neu": {
-        "label": "Master: Automat NEU (isoliert)",
-        "beleuchtung": "blue_hour", "zustand": "neu", "umfeld": "isoliert",
-    },
-    "master_automat_gesprengt": {
-        "label": "Master: Automat GESPRENGT (isoliert)",
-        "beleuchtung": "nacht_laterne", "zustand": "gesprengt", "umfeld": "isoliert",
-    },
-}
-
-WORKFLOW_HINWEIS = (
-    "Master-Workflow: Masterbild EINMAL generieren und festlegen (rollen, bis es "
-    "sitzt). Danach alle Automaten-Clips als Bild→Video AUS diesem Master ableiten "
-    "— nur die Kamerabewegung animieren, nie den Automaten neu wuerfeln."
-)
-
-
-def build_master_prompt(preset: str) -> str:
-    """Fertigen Master-Prompt (Standbild, ohne Kamerabewegung) aus einem Preset."""
-    if preset not in MASTER_PRESETS:
-        raise ValueError(f"Unbekanntes Preset: {preset!r} "
-                         f"(erlaubt: {', '.join(MASTER_PRESETS)})")
-    p = MASTER_PRESETS[preset]
-    return build_prompt(beleuchtung=p["beleuchtung"], zustand=p["zustand"],
-                        umfeld=p["umfeld"], kamerabewegung=None)
+# GELOESCHT (Aufraeumen 01.08.2026): MASTER_PRESETS, WORKFLOW_HINWEIS und
+# build_master_prompt() — der generierte Master-Weg ist ueberholt, der
+# Master entsteht aus einem echten Foto (BROLL_PLAN, 31.07.). Wortlaute
+# in git log.

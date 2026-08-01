@@ -544,15 +544,15 @@ def _next_broll_name(kategorie: str, ext: str) -> str:
 # Kontext fuer den Prompt-Generator (Auswahllisten aus core.broll_prompts —
 # der Single Source of Truth; die fixen Bloecke selbst bleiben im core-Modul).
 def _prompt_generator_ctx() -> dict[str, Any]:
+    # Aufraeumen 01.08.2026: Zustand/Umfeld/Master sind mit dem
+    # Automat-per-Text-Weg entfallen — der Automat entsteht nur noch aus
+    # echten Fotos (/broll-Slash-Command). Der Generator baut ausschliesslich
+    # Szenen-Prompts (Subjekt + Beleuchtung + Kamerabewegung).
     return {
         "pg_beleuchtung": broll_prompts.BELEUCHTUNG,
-        "pg_zustand": broll_prompts.ZUSTAND,
-        "pg_umfeld": broll_prompts.UMFELD,
         "pg_bewegung": broll_prompts.KAMERABEWEGUNG,
         "pg_subjekt": broll_prompts.SUBJEKT,
-        "pg_master": broll_prompts.MASTER_PRESETS,
         "pg_kategorien": broll_prompts.KATEGORIE_PRESETS,
-        "pg_workflow": broll_prompts.WORKFLOW_HINWEIS,
     }
 
 
@@ -569,30 +569,21 @@ def broll_page(request: Request):
 
 @app.get("/broll/prompt", response_class=HTMLResponse)
 def broll_prompt(request: Request,
-                 motiv: str = Query("automat"),
-                 zustand: str = Query("intakt_nacht"),
-                 umfeld: str = Query("wand"),
+                 motiv: str = Query("polizeiwagen"),
                  beleuchtung: str = Query("nacht_laterne"),
                  bewegung: str = Query("keine"),
-                 preset: Optional[str] = Query(None),
                  kategorie: Optional[str] = Query(None)):
     """Fertigen Higgsfield-Prompt bauen (HTMX-Partial fuer die /broll-Seite).
 
-    Drei Wege: Master-Preset (?preset=...), Kategorie-Preset (?kategorie=...,
-    liefert die zur Szenen-Rolle passende Kombination + Upload-Hinweis) oder
-    die freie Kombination aus den Dropdowns. motiv='automat' nutzt den fixen
-    [Automat]-Block; jeder andere Wert ist ein broll_prompts.SUBJEKT-Schluessel."""
+    Zwei Wege: Kategorie-Preset (?kategorie=..., liefert die zur Szenen-Rolle
+    passende Kombination + Upload-Hinweis) oder die freie Kombination aus den
+    Dropdowns. `motiv` ist ein broll_prompts.SUBJEKT-Schluessel — den
+    Automat-per-Text-Weg gibt es nicht mehr (Aufraeumen 01.08.2026)."""
     ziel_kategorie = None
     try:
-        if preset:
-            prompt = broll_prompts.build_master_prompt(preset)
-        elif kategorie:
+        if kategorie:
             prompt = broll_prompts.build_kategorie_prompt(kategorie)
             ziel_kategorie = kategorie
-        elif motiv == "automat":
-            prompt = broll_prompts.build_prompt(
-                beleuchtung=beleuchtung, zustand=zustand, umfeld=umfeld,
-                kamerabewegung=bewegung)
         else:
             prompt = broll_prompts.build_prompt(
                 beleuchtung=beleuchtung, subjekt=motiv, kamerabewegung=bewegung)
