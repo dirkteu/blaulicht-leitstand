@@ -102,6 +102,12 @@ keine Konsistenz.** Konsistenz kommt ab jetzt aus einem Masterbild, nie mehr aus
 - [x] User: Higgsfield-MCP OAuth freischalten — Connector ist autorisiert
 - [x] Runde 1 für `effekt` ausgeführt: 4 Clips, davon 2 empfohlen (`effekt_01_pushin`, `effekt_03_seitwaerts` in `assets/master/`). **Stopp-Regel greift: warten auf Review.**
 - [ ] Freigegebene Clips über die `/broll`-Seite in den Bucket laden
-- [ ] `kulisse`-Master bauen — **blockiert:** braucht Original-Fotos des *unbeschädigten* Automaten
+- [ ] ~~`kulisse`-Master bauen — **blockiert:** braucht Original-Fotos des *unbeschädigten* Automaten~~
+      **hinfällig (01.08.2026):** Seit der Vier-Teile-Klammer (UEBERLEGUNG_DRAMATURGIE.md)
+      hängt `kulisse` an keiner Szenen-Rolle mehr — blockiert nichts. Bei Bedarf später.
+- [ ] **Täter-/Flucht-Clips für `cctv` generieren (Beschluss 3) — jetzt der EINZIGE Engpass:**
+      story+zahlen fordern 6 verschiedene Clips an, im Bucket liegt nur der Altclip
+      vom 26.07. (zeigt zudem den intakten Automaten). Nach Upload Pool-Obergrenze
+      in `script.ASSETS` anheben — mehr braucht es nicht.
 - [ ] `wetter` aus `core/contracts.py` streichen (Beschluss 1, unverändert offen)
 - [ ] `/broll`-Seite (api/main.py + Templates) um die Platten-Prompts erweitern (optional — der Slash-Command deckt den Weg bereits ab)

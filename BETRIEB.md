@@ -796,6 +796,65 @@ Zwei Dinge dabei beachten:
   ausschliesslich `os.environ` liest (geprueft). Fuer ein Image, das auf den
   VPS soll, ist das der wichtigere Teil der Aenderung.
 
+## Update 2026-08-01 (Vier-Teile-Klammer · Tatort-Sätze · Overlays entschlackt)
+
+Umsetzung der Überlegung aus [`UEBERLEGUNG_DRAMATURGIE.md`](UEBERLEGUNG_DRAMATURGIE.md),
+an zwei Testrenderings mit echten Bucket-Clips verifiziert.
+
+### Mehrere Clips je Szene (Wurzel des Loop-Problems)
+
+`core/render.py` `_build_background()`: das `broll`-Feld einer Szene ist jetzt
+eine **Liste**; die Szenendauer wird gleichmäßig auf die Clips verteilt, statt
+EINEN Clip über die ganze Szene zu loopen (vorher: 18-s-Story = 3,6× dieselben
+fünf Sekunden). Ein einzelner String (Bestands-Specs in der DB) verhält sich
+exakt wie bisher — rückwärtskompatibel, kein Migrationsbedarf. Der
+Render-Worker sammelt die Download-Liste entsprechend über beide Formen.
+
+### Vier-Teile-Klammer statt fünf Bilder
+
+Neue Rollen-Zuordnung in `core/script.py` (`ROLE_BROLL`): Polizei (hook) →
+Automat (eskalation, 2 Clips) → Täter & Flucht (story 4 + zahlen 2 Clips,
+Kategorie `cctv`) → **wieder der Automat** (cliffhanger, 1 stehendes
+Schlussbild). Der Clip endet unter „ungelöst" beim zerstörten Automaten, nicht
+beim wegfahrenden Auto. `kulisse` und `wetter` hängen an keiner Rolle mehr —
+**das fehlende Foto des intakten Automaten blockiert nichts mehr.**
+
+### Tatort-Sätze: ein Automat pro Video (Fehler in der ersten Runde)
+
+Der erste Wurf verteilte die 9 effekt-Clips als einen Topf — Ergebnis: **zwei
+verschiedene Automaten in einem Video** (Eskalation Tatort A+B, Cliffhanger
+Tatort C). Genau das „Einzelclip-Würfeln", das BROLL_PLAN Beschluss 5
+verbietet. Fix: `EFFEKT_SAETZE` gruppiert die Clips nach Tatort (Wrack 1: 3,
+VISA: 2, Wandautomat: 2, Tobaccoland: 2; Zuordnung in PROJEKTBUCH_BROLL.md
+Abschnitt 7). Die Zuteilung wählt je Video EINEN Satz; bei 2-Clip-Sätzen kehrt
+der Cliffhanger wörtlich zum Eskalations-Bild zurück — stärkt die Klammer.
+Über alle 997 möglichen Seeds geprüft: nie zwei Tatorte in einem Video,
+Verteilung 266/260/235/236 auf die vier Sätze.
+
+### Picker ohne Zurücklegen
+
+`pick_broll(role, seed+t)` ersetzt durch `broll_zuteilung(seed)`: je Kategorie
+wird der Pool mit dem Fall-Seed gemischt und ohne Zurücklegen ausgegeben.
+Der alte Index kollidierte **modulo Poolgröße** (Szenenstarts 10 und 28 → bei
+9 Clips beide Index 1; 0 und 36 beide Index 0) — deshalb bekamen mehrere
+Szenen denselben Clip. Bleibt deterministisch je Fall.
+
+### Overlays entschlackt (Nutzer-Entscheid, per Screenshot markiert)
+
+Raus aus `core/render.py`: laufender Timer, „live"-Punkt, Karte+Pin+Ortsname,
+Warnbalken, „Tatzeit … Uhr"-Label (samt `_warn_tag`, `_draw_incident_time`,
+ungenutzter Fonts). Geblieben: Untertitel, Fortschrittsbalken,
+Beute/Schaden-Tafel (zahlen), Hook-Blitz. `build_spec` schreibt die alten
+Overlay-Tags nicht mehr; Bestands-Specs mit den Tags werden ignoriert.
+
+### Offener Engpass danach
+
+Story+Zahlen (26 von 42 s) fordern 6 verschiedene `cctv`-Clips an — im Bucket
+liegt genau **einer** (Altclip vom 26.07., zeigt zudem den intakten Automaten
+entgegen BROLL_PLAN Beschluss 3). Bis die Täter-/Flucht-Clips generiert sind,
+loopt der Mittelteil sichtbar. Nach dem Upload nur die Pool-Obergrenze in
+`script.ASSETS` anheben — der Rest läuft ohne Code-Änderung.
+
 ## ⚠️ Gemini-TTS: 100 Anfragen pro Tag (2026-07-30 aufgelaufen)
 
 Beim Testen erschöpft: `generate_requests_per_model_per_day, limit: 100,

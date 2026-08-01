@@ -48,8 +48,12 @@ def render(case_id: str) -> None:
     try:
         # B-Roll je Szene NUR LESEND aus Storage ziehen (dedupliziert ueber
         # Dateiname, falls mehrere Szenen denselben Clip verwenden).
-        needed = sorted({s.get("broll") for s in spec.get("scenes", []) if s.get("broll")})
-        for name in needed:
+        # `broll` ist eine Clip-Liste; alte Specs tragen einen String.
+        needed: set[str] = set()
+        for s in spec.get("scenes", []):
+            b = s.get("broll") or []
+            needed.update([b] if isinstance(b, str) else b)
+        for name in sorted(n for n in needed if n):
             try:
                 local = download(Bucket.BROLL, name)
             except Exception:

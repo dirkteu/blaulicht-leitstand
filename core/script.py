@@ -21,6 +21,7 @@ damit derselbe Fall bei erneutem Lauf dieselbe Bauanleitung erhält.
 from __future__ import annotations
 
 import hashlib
+import random
 import re
 from datetime import datetime
 from typing import Any, Optional
@@ -47,13 +48,22 @@ DISCLAIMER = (
 # Namen bleiben broll_<kategorie>_NN.mp4; der Picker waehlt deterministisch per
 # Hash, damit derselbe Fall immer dieselben Clips bekommt.
 #
-# `effect` startet bewusst bei 2, nicht bei 1: broll_effekt_01.mp4 ist der
-# GENERIERTE Clip vom 26.07. mit einem anderen Automaten. 02-08 sind die aus
-# echten Tatortfotos gebauten Clips (31.07., siehe PROJEKTBUCH_BROLL.md) — sie
-# zeigen drei reale Tatorte. Nimmt man 01 mit in den Pool, zeigt jedes achte
-# Video wieder einen fremden Automaten, also genau die Inkonsistenz, gegen die
-# das ganze Verfahren gebaut wurde.
+# Die effekt-Clips 02-10 stammen aus VIER realen Tatorten (Zuordnung:
+# PROJEKTBUCH_BROLL.md, Abschnitt 7). Innerhalb eines Videos darf nur EIN
+# Tatort vorkommen — zwei verschiedene Automaten in einem Clip zerstoeren
+# genau die Konsistenz, fuer die das Master-Verfahren gebaut wurde
+# (BROLL_PLAN Beschluss 5: Vielfalt nur ueber komplette Saetze, „nie ueber
+# Einzelclip-Wuerfeln"). Die Zuteilung waehlt deshalb je Video EINEN Satz.
 #
+# broll_effekt_01.mp4 bleibt bewusst draussen: der GENERIERTE Clip vom
+# 26.07. zeigt einen fremden Automaten und passt zu keinem Satz.
+EFFEKT_SAETZE = [
+    ["broll_effekt_02.mp4", "broll_effekt_03.mp4", "broll_effekt_07.mp4"],  # Wrack 1 (Pfosten)
+    ["broll_effekt_04.mp4", "broll_effekt_05.mp4"],                          # VISA-Automat
+    ["broll_effekt_06.mp4", "broll_effekt_08.mp4"],                          # Wandautomat
+    ["broll_effekt_09.mp4", "broll_effekt_10.mp4"],                          # Tobaccoland am Zaun
+]
+
 # Die uebrigen Kategorien stehen weiter auf 1 — dort liegt je ein Clip.
 ASSETS = {
     "street":    [f"broll_strasse_{i:02d}.mp4"   for i in range(1, 2)],
@@ -61,29 +71,73 @@ ASSETS = {
     "cctv":      [f"broll_cctv_{i:02d}.mp4"      for i in range(1, 2)],
     "weather":   [f"broll_wetter_{i:02d}.mp4"    for i in range(1, 2)],
     "location":  [f"broll_kulisse_{i:02d}.mp4"   for i in range(1, 2)],
-    "effect":    [f"broll_effekt_{i:02d}.mp4"    for i in range(2, 11)],
+    "effect":    [clip for satz in EFFEKT_SAETZE for clip in satz],
 }
 
-# Welche B-Roll-Kategorie passt zu welcher Szenen-Rolle
+# Welche B-Roll-Kategorie passt zu welcher Szenen-Rolle.
+#
+# VIER-TEILE-KLAMMER (UEBERLEGUNG_DRAMATURGIE.md, umgesetzt 01.08.2026):
+# Teil 1 Polizei (hook) → Teil 2 die Tat/der Automat (eskalation) →
+# Teil 3 Taeter & Flucht (story + zahlen) → Teil 4 wieder der Automat
+# (cliffhanger, letztes Bild). Der Clip endet beim zerstoerten Automaten
+# unter „ungeloest", nicht beim wegfahrenden Auto.
+# `location` (intakter Automat) und `weather` haengen damit an keiner Rolle
+# mehr — das fehlende Foto des intakten Automaten blockiert nichts.
+# `cctv` traegt Teil 3 und ist laut BROLL_PLAN Beschluss 3 neu definiert
+# (Taeter-Silhouetten/Fluchtfahrzeug OHNE Automat); bis zur naechsten
+# Generierungsrunde liegt dort nur der Altclip vom 26.07.
 ROLE_BROLL = {
     "hook":        "blaulicht",
     "eskalation":  "effect",
     "story":       "cctv",
-    "zahlen":      "location",
-    "cliffhanger": "street",
+    "zahlen":      "cctv",
+    "cliffhanger": "effect",
 }
 
 # Feste Szenen-Dauern (Summe ~ DURATION), wie im Prototyp
+SCENE_ORDER = ("hook", "eskalation", "story", "zahlen", "cliffhanger")
 SCENE_DURATIONS = {"hook": 3, "eskalation": 7, "story": 18, "zahlen": 8, "cliffhanger": 6}
 SCENE_SFX = {"hook": "boom", "eskalation": "sirene", "story": "herzschlag",
              "zahlen": "herzschlag", "cliffhanger": "stille"}
 
+# Wie viele verschiedene Clips eine Szene zeigt (Richtwert: Szenendauer /
+# ~5-s-Cliplaenge). Vorher lief EIN Clip ueber die ganze Szene geloopt — in
+# der 18-s-Story sah man dieselben fuenf Sekunden 3,6-mal hintereinander.
+# cliffhanger bleibt bewusst bei 1: Das Schlussbild (der Automat) soll
+# stehen, nicht schneiden.
+SCENE_CLIPS = {"hook": 1, "eskalation": 2, "story": 4, "zahlen": 2, "cliffhanger": 1}
 
-def pick_broll(role: str, seed: int) -> str:
-    """Deterministisch aus der Bibliothek wählen (variiert pro Fall)."""
-    cat = ROLE_BROLL.get(role, "street")
-    pool = ASSETS[cat]
-    return pool[seed % len(pool)]
+
+def broll_zuteilung(seed: int) -> dict[str, list[str]]:
+    """Clips fuer ALLE Szenen eines Videos in einem Zug waehlen.
+
+    Je Kategorie wird der Pool mit dem Fall-Seed gemischt und dann OHNE
+    Zuruecklegen ausgegeben: Zwei Szenen derselben Kategorie koennen
+    denselben Clip erst bekommen, wenn der Pool erschoepft ist (dann wird
+    von vorn durchgereicht — bei den Ein-Clip-Kategorien unvermeidlich).
+    Deterministisch: derselbe Fall bekommt stabil dieselben Clips.
+
+    Ersetzt pick_broll(role, seed+t): dessen Index kollidierte modulo
+    Poolgroesse — die Szenenstarts 10 (story) und 28 (zahlen) landeten bei
+    9 Clips beide auf Index 1, hook (0) und cliffhanger (36) beide auf 0.
+    """
+    rnd = random.Random(seed)
+    gemischt = {kat: rnd.sample(pool, len(pool)) for kat, pool in ASSETS.items()}
+    # effekt: EIN Tatort-Satz je Video (siehe EFFEKT_SAETZE). Braucht ein
+    # Video mehr Automaten-Clips, als der Satz hergibt, wird innerhalb des
+    # Satzes von vorn durchgereicht — der Cliffhanger kehrt dann woertlich
+    # zum Eskalations-Bild zurueck, was die Klammer eher staerkt als stoert.
+    satz = rnd.choice(EFFEKT_SAETZE)
+    gemischt["effect"] = rnd.sample(satz, len(satz))
+    vergeben = {kat: 0 for kat in ASSETS}
+    zuteilung: dict[str, list[str]] = {}
+    for role in SCENE_ORDER:
+        kat = ROLE_BROLL.get(role, "street")
+        pool = gemischt[kat]
+        n = SCENE_CLIPS.get(role, 1)
+        zuteilung[role] = [pool[(vergeben[kat] + i) % len(pool)] for i in range(n)]
+        vergeben[kat] += n
+    return zuteilung
 
 
 # ---------------------------------------------------------------------------
@@ -247,18 +301,17 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     # Deterministischer B-Roll-Seed (Titel + Quelle, damit derselbe Fall stabil bleibt)
     seed_src = f"{case.get('title', '')}|{facts.get('quelle_link') or case.get('link', '')}"
     seed = int(hashlib.md5(seed_src.encode("utf-8")).hexdigest(), 16) % 997
+    zuteilung = broll_zuteilung(seed)
 
     scenes: list[dict[str, Any]] = []
     t = 0
-    for role in ("hook", "eskalation", "story", "zahlen", "cliffhanger"):
+    for role in SCENE_ORDER:
         d = SCENE_DURATIONS[role]
-        overlay = ["timer", "progress"]
-        if role in ("hook", "eskalation"):
-            overlay.append(f"map:{ort}")
-        if role in ("story", "eskalation"):
-            overlay.append("warnbalken")
-        if role == "hook" and zeit:
-            overlay.append("zeit")
+        # Nur noch Fortschrittsbalken + Beute/Schaden-Tafel. Timer, Karte,
+        # Warnbalken und Tatzeit-Label sind raus (Nutzer-Entscheid
+        # 01.08.2026, siehe core/render.py) — render ignoriert die alten
+        # Tags in Bestands-Specs einfach.
+        overlay = ["progress"]
         if role == "zahlen":
             overlay.append("daten:beute_schaden")
 
@@ -266,13 +319,13 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
             "t_start": t, "t_end": t + d, "role": role,
             "vo": lines[role],
             "caption": _caption(role, zeit, ungeloest, tat),
-            "broll": pick_broll(role, seed + t),
+            "broll": zuteilung[role],
             "overlay": overlay,
             "sfx": SCENE_SFX[role],
         })
         t += d
 
-    voiceover = " ".join(lines[r] for r in ("hook", "eskalation", "story", "zahlen", "cliffhanger"))
+    voiceover = " ".join(lines[r] for r in SCENE_ORDER)
 
     hashtags = ["#truecrime", "#deutschland", "#blaulicht", "#krimi", "#polizei", "#nachrichten"]
     tat_tag = re.sub(r"[^a-z0-9]+", "", tat.lower())[:20]

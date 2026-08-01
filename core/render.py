@@ -4,10 +4,14 @@ core/render.py  —  Team 4: Video-Assembly (Pillow-Overlays + ffmpeg)
 =======================================================================
 
 PORT aus dem Prototyp `render.py` (Projektwurzel): pro Szene ein
-Hintergrund (B-Roll skaliert/geloopt ODER Farb-Kulisse), transparente
-Pillow-Overlay-Frames (Timer, Karte+Pin, Warnbalken, Untertitel,
-Fortschrittsbalken), Grade/Vignette/Korn nur auf den Hintergrund,
-Shake+Flash am Hook, Compositing + Tonspur per ffmpeg.
+Hintergrund (ein oder mehrere B-Roll-Clips ODER Farb-Kulisse), transparente
+Pillow-Overlay-Frames (Untertitel, Fortschrittsbalken, Beute/Schaden-Tafel),
+Grade/Vignette/Korn nur auf den Hintergrund, Shake+Flash am Hook,
+Compositing + Tonspur per ffmpeg.
+
+ENTFERNT (Nutzer-Entscheid 01.08.2026): Timer, live-Punkt, Karte+Pin,
+Warnbalken und Tatzeit-Label — das Bild traegt die Erzaehlung, die
+Einblendungen konkurrierten damit.
 
 Angepasst gegenueber dem Prototyp (Ziel: Docker/Linux, nicht mehr
 dateisystem-getrieben):
@@ -23,14 +27,11 @@ dateisystem-getrieben):
     der Pfad zu einer frisch angelegten Temp-mp4, die der Worker hochlaedt
     und danach aufraeumt.
 
-NEU: Daten-Overlays aus `facts` (Case.facts, siehe `core.contracts.Facts`):
-  - `facts['zeit']` (HH:MM)              -> echte Tatzeit-Anzeige am Hook.
+Daten-Overlay aus `facts` (Case.facts, siehe `core.contracts.Facts`):
   - `facts['beute_eur']`/`schaden_eur'`  -> Vergleichs-Karte
     "Beute X €" vs. "Schaden Y €" in der Zahlen-Szene (role "zahlen").
-  Beide Overlays feuern automatisch anhand der Szenen-Rolle (hook/zahlen)
-  UND zusaetzlich, falls eine Szene die Overlay-Tags "zeit" bzw.
-  "daten:beute_schaden" explizit traegt (fuer Team 3/core.script, falls
-  die Spec das spaeter selbst steuern will).
+  Feuert automatisch anhand der Szenen-Rolle (zahlen) UND zusaetzlich,
+  falls eine Szene den Overlay-Tag "daten:beute_schaden" explizit traegt.
 """
 
 from __future__ import annotations
@@ -97,8 +98,8 @@ def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
     return ImageFont.load_default()
 
 
-F_TIMER = _font(58); F_SMALL = _font(34); F_WARN = _font(42); F_CAP = _font(74); F_PIN = _font(38)
-F_META = _font(30); F_LABEL = _font(30); F_ZAHL = _font(46)
+F_SMALL = _font(34); F_CAP = _font(74)
+F_LABEL = _font(30); F_ZAHL = _font(46)
 
 
 # ---------------------------------------------------------------------------
@@ -121,17 +122,6 @@ def _scene_at(scenes: list[dict[str, Any]], t: float) -> dict[str, Any]:
 
 def _scene_dur(s: dict[str, Any]) -> float:
     return max(0.4, float(s["t_end"]) - float(s["t_start"]))
-
-
-def _warn_tag(spec: dict[str, Any]) -> str:
-    t = (spec.get("case", {}).get("title") or "").lower()
-    if "spreng" in t or "automat" in t:
-        return "Automat gesprengt"
-    if "raub" in t or "berfall" in t:
-        return "Raubüberfall"
-    if "einbruch" in t:
-        return "Einbruch"
-    return "Tatverdacht"
 
 
 def _wrap(draw: ImageDraw.ImageDraw, text: str, fnt, maxw: int) -> list[str]:
@@ -162,19 +152,6 @@ def _eur(n: Any) -> Optional[str]:
     except (TypeError, ValueError):
         return None
     return f"{n:,}".replace(",", ".") + " €"
-
-
-def _draw_incident_time(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
-    """NEU: echte Tatzeit aus facts['zeit'] (HH:MM) als kleines Label,
-    ergaenzend zum laufenden Timer aus dem Prototyp."""
-    zeit = (facts or {}).get("zeit")
-    if not zeit:
-        return
-    label = f"Tatzeit {zeit} Uhr"
-    tw = d.textlength(label, font=F_META)
-    x0, y0, pad = 56, 152, 16
-    d.rounded_rectangle([x0, y0, x0 + tw + 2 * pad, y0 + 52], radius=10, fill=(0, 0, 0, 150))
-    d.text((x0 + pad, y0 + 26), label, font=F_META, fill=(240, 240, 243, 255), anchor="lm")
 
 
 def _draw_beute_schaden(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
@@ -211,23 +188,36 @@ def _build_background(spec: dict[str, Any], broll_local_paths: dict[str, str], w
 
     for i, s in enumerate(spec["scenes"]):
         d = _scene_dur(s)
-        out = os.path.join(bgdir, f"bg_{i:02d}.mp4")
-        broll_name = s.get("broll") or ""
-        broll_path = broll_local_paths.get(broll_name)
+        # `broll` ist eine Liste von Clips, die die Szene unter sich aufteilen;
+        # ein einzelner String (alte Specs) wird wie eine Ein-Element-Liste
+        # behandelt und verhaelt sich exakt wie bisher.
+        broll_names = s.get("broll") or []
+        if isinstance(broll_names, str):
+            broll_names = [broll_names]
+        clip_paths = [broll_local_paths[n] for n in broll_names
+                      if broll_local_paths.get(n) and os.path.exists(broll_local_paths[n])]
 
-        if broll_path and os.path.exists(broll_path):
-            _run(["ffmpeg", "-y", "-stream_loop", "-1", "-i", broll_path, "-t", f"{d:.3f}",
-                  "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,"
-                         "crop=1080:1920,setsar=1,fps=30",
-                  "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", out])
+        if clip_paths:
+            # Szenendauer gleichmaessig auf die Clips verteilen statt EINEN
+            # Clip ueber die ganze Szene zu loopen. -stream_loop bleibt als
+            # Netz, falls ein Clip kuerzer ist als sein Anteil.
+            share = d / len(clip_paths)
+            for j, cp in enumerate(clip_paths):
+                out = os.path.join(bgdir, f"bg_{i:02d}_{j}.mp4")
+                _run(["ffmpeg", "-y", "-stream_loop", "-1", "-i", cp, "-t", f"{share:.3f}",
+                      "-vf", "scale=1080:1920:force_original_aspect_ratio=increase,"
+                             "crop=1080:1920,setsar=1,fps=30",
+                      "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", out])
+                parts.append(out)
             used_broll += 1
         else:
             r = ROLE_TINT.get(s.get("role", ""), ROLE_TINT["story"])
             hexc = "0x%02X%02X%02X" % r
+            out = os.path.join(bgdir, f"bg_{i:02d}.mp4")
             _run(["ffmpeg", "-y", "-f", "lavfi",
                   "-i", f"color=c={hexc}:s=1080x1920:r=30:d={d:.3f}",
                   "-c:v", "libx264", "-pix_fmt", "yuv420p", out])
-        parts.append(out)
+            parts.append(out)
 
     listfile = os.path.join(bgdir, "list.txt")
     with open(listfile, "w", encoding="utf-8") as f:
@@ -242,40 +232,22 @@ def _build_background(spec: dict[str, Any], broll_local_paths: dict[str, str], w
 # ---------------------------------------------------------------------------
 # 2) OVERLAY-Frame (transparent) je Zeitpunkt
 # ---------------------------------------------------------------------------
-def _draw_overlay(spec: dict[str, Any], facts: dict[str, Any], t: float, tag: str, frac: float) -> Image.Image:
+def _draw_overlay(spec: dict[str, Any], facts: dict[str, Any], t: float, frac: float) -> Image.Image:
     s = _scene_at(spec["scenes"], t)
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     # Abdunklung unten (Lesbarkeit der Untertitel)
     d.rectangle([0, H - 640, W, H], fill=(0, 0, 0, 150))
 
-    # Kopfzeile: Timer + live
-    sec = int(t)
-    d.text((56, 44), f"{sec // 60}:{sec % 60:02d}", font=F_TIMER, fill=(255, 59, 48, 255))
-    d.ellipse([W - 210, 60, W - 190, 80], fill=(255, 59, 48, 255))
-    d.text((W - 178, 52), "live", font=F_SMALL, fill=(255, 59, 48, 255))
+    # ENTFERNT (Nutzer-Entscheid 01.08.2026): Timer, live-Punkt, Karte+Pin,
+    # Warnbalken und Tatzeit-Label. Das Bild traegt die Erzaehlung; an
+    # Einblendungen bleiben nur Untertitel, Fortschrittsbalken und die
+    # Beute/Schaden-Tafel der Zahlen-Szene.
     if DEBUG_LABEL:
-        d.text((56, 132), s.get("broll", ""), font=F_SMALL, fill=(200, 200, 205, 220))
+        b = s.get("broll") or ""
+        d.text((56, 132), b if isinstance(b, str) else " + ".join(b),
+               font=F_SMALL, fill=(200, 200, 205, 220))
 
-    # Karte + Pin
-    if any(str(o).startswith("map") for o in s.get("overlay", [])):
-        d.ellipse([W // 2 - 150, 360, W // 2 + 150, 660], outline=(255, 255, 255, 130), width=3)
-        d.ellipse([W // 2 - 26, 470, W // 2 + 26, 522], fill=(255, 59, 48, 255))
-        d.text((W // 2, 690), spec.get("case", {}).get("region", ""), font=F_PIN,
-               fill=(240, 240, 243, 255), anchor="mm")
-
-    # Warnbalken
-    if "warnbalken" in s.get("overlay", []):
-        y = 940
-        d.rectangle([56, y, W - 56, y + 84], fill=(110, 12, 8, 205))
-        d.rectangle([56, y, 66, y + 84], fill=RED + (255,))
-        d.polygon([(92, y + 62), (128, y + 62), (110, y + 24)], outline=AMBER + (255,), width=4)
-        d.text((110, y + 44), "!", font=F_SMALL, fill=AMBER + (255,), anchor="mm")
-        d.text((150, y + 20), tag, font=F_WARN, fill=AMBER + (255,))
-
-    # NEU: Daten-Overlays aus facts
-    if s.get("role") == "hook" or _wants(s, "zeit"):
-        _draw_incident_time(d, facts)
     if s.get("role") == "zahlen" or _wants(s, "daten:beute_schaden"):
         _draw_beute_schaden(d, facts)
 
@@ -341,7 +313,6 @@ def render(spec: dict[str, Any],
     broll_local_paths = broll_local_paths or {}
     scenes = spec["scenes"]
     durf = float(spec.get("duration") or scenes[-1]["t_end"])
-    tag = _warn_tag(spec)
 
     workdir = tempfile.mkdtemp(prefix="blaulicht_render_")
     try:
@@ -353,7 +324,7 @@ def render(spec: dict[str, Any],
         for k in range(total):
             t = k / FRAMES_PER_SEC
             frac = min((k + 1) / total, 1.0)
-            _draw_overlay(spec, facts, t, tag, frac).save(os.path.join(frames_dir, f"f_{k:04d}.png"))
+            _draw_overlay(spec, facts, t, frac).save(os.path.join(frames_dir, f"f_{k:04d}.png"))
 
         audio_in, _desc = _audio_input(voice_local_path, durf)
         out_path = os.path.join(workdir, "out.mp4")
