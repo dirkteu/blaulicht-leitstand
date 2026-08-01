@@ -690,6 +690,44 @@ und bleibt fuer alle bestehenden Aufrufer **byte-identisch** (geprueft).
 `TEXT_REGEL_ECHTFOTO`. Merksatz: Echte Schrift auf einem echten Foto ist keine
 Halluzination, sondern Beleg.
 
+### Bewegung im Bild: die frueheren Aussagen waren zu pauschal (01.08.2026)
+
+Zwei Korrekturen an dem, was oben unter Punkt 3 steht.
+
+**1 · „Mit zwei Kadern kommt keine Atmosphaere" gilt nur fuer HINZUERFUNDENES.**
+Rauch fehlte, weil er nicht im Bild war und erfunden werden musste. **Vorhandene**
+Elemente lassen sich sehr wohl bewegen. Gemessen an `bank_02_band.mp4` (Frames
+auf Helligkeit normiert, Kamerafahrt herausgerechnet, damit nur echte
+Strukturbewegung uebrig bleibt):
+
+| Bildbereich | Restbewegung |
+|---|---|
+| oben (Baeume) | 0,033 |
+| Mitte (Automat, Absperrband) | 0,104 |
+| unten (Boden) | 0,119 |
+
+Die Bewegung sitzt dort, wo das Band ist; die Baeume stehen praktisch still.
+Also: **Band flattert, Blaetter kaum.** Wer Bewegung will, muss sie im Prompt
+benennen — sie kommt nicht von allein, aber sie kommt.
+
+**2 · Der gegradete Endkader ist ein STARKER Hebel, kein feiner.**
+Um ein Blaulicht schwellen zu lassen, kann man den Endkader blauer graden als
+den Startkader; das Modell muss dann zwischen zwei Lichtstimmungen ueberblenden.
+Das funktioniert — aber es **verstaerkt massiv**:
+
+| Gradierung des Endkaders | Ergebnis |
+|---|---|
+| +40 % im Blaukanal | Szene ersaeuft ab Sekunde 2,5 in Blau, Kanten leuchten tuerkis. Unbrauchbar. |
+| +20 % | brauchbar (Zweitversuch `bank_01_zaun`) |
+
+Dieselbe Gradierung wirkt ausserdem je nach Ausgangsmaterial verschieden stark:
+Bei einer bereits blaustichigen Platte addiert sich der Effekt auf. **Sparsam
+graden und das Ergebnis ansehen** — eine feste Zahl gibt es nicht.
+
+Nebenbefund: Wo stark umbeleuchtet wird, malt das Modell Oberflaechen neu. Die
+Restbewegung im ueberzogenen ersten Versuch lag bei 0,355 gegenueber 0,085 —
+das ist kein Flattern, das ist Instabilitaet.
+
 ### Wann welcher Weg
 
 **umfaerben** ist der Standard. **komposit** ist richtig, wenn das Objekt an einen

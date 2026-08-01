@@ -61,7 +61,7 @@ ASSETS = {
     "cctv":      [f"broll_cctv_{i:02d}.mp4"      for i in range(1, 2)],
     "weather":   [f"broll_wetter_{i:02d}.mp4"    for i in range(1, 2)],
     "location":  [f"broll_kulisse_{i:02d}.mp4"   for i in range(1, 2)],
-    "effect":    [f"broll_effekt_{i:02d}.mp4"    for i in range(2, 9)],
+    "effect":    [f"broll_effekt_{i:02d}.mp4"    for i in range(2, 11)],
 }
 
 # Welche B-Roll-Kategorie passt zu welcher Szenen-Rolle

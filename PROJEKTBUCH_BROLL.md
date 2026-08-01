@@ -108,6 +108,27 @@ Abhängigkeiten der Skripte (numpy, opencv, ultralytics) bewusst **nicht** in
    → Merksatz: **Echte Schrift auf einem echten Foto ist keine Halluzination,
    sondern Beleg.**
 
+8. **„Keine Atmosphäre mit zwei Kadern" gilt nur für Hinzuerfundenes.**
+   Rauch fehlte, weil er nicht im Bild war. **Vorhandene** Elemente lassen sich
+   sehr wohl bewegen, wenn man sie im Prompt benennt. Gemessen an
+   `bank_02_band.mp4` (Frames auf Helligkeit normiert, Kamerafahrt
+   herausgerechnet): Absperrband-Bereich 0,104 · Bäume 0,033. Das Band flattert,
+   das Laub kaum. Erkenntnis 3 oben ist damit präzisiert, nicht widerlegt.
+
+9. **Der gegradete Endkader ist ein starker Hebel, kein feiner.**
+   Um ein Blaulicht schwellen zu lassen, gradet man den Endkader blauer als den
+   Startkader — das Modell muss dann zwischen zwei Lichtstimmungen überblenden.
+   Es funktioniert, aber es **verstärkt**:
+
+   | Gradierung | Ergebnis |
+   |---|---|
+   | +40 % Blaukanal | Szene ersäuft ab Sekunde 2,5, Kanten türkis. Unbrauchbar. |
+   | +20 % | brauchbar, im Clip auf +29 % angewachsen |
+
+   Bei ohnehin blaustichigem Ausgangsmaterial addiert es sich auf. Ein
+   *periodisches* Blinken geht mit zwei Standbildern grundsätzlich nicht — nur
+   eine Welle. Und: Wo stark umbeleuchtet wird, malt das Modell Oberflächen neu.
+
 ## 6. Grenzen des Verfahrens
 
 - **Streugut freistellen braucht Farbkontrast zum Boden.** Metall auf Asphalt und
@@ -125,21 +146,27 @@ Abhängigkeiten der Skripte (numpy, opencv, ultralytics) bewusst **nicht** in
 
 ## 7. Was entstanden ist
 
-**Sieben Clips**, alle 1080×1920, 24 fps, 5,04 s, stumm, in `assets/master/`:
+**Neun sendefähige Clips** aus **vier Tatorten**, alle 1080×1920, 24 fps,
+5,04 s, stumm. Im Bucket `broll` als `broll_effekt_02` … `_10`:
 
-| Datei | Motiv | Weg |
-|---|---|---|
-| `effekt_01_pushin.mp4` | Wrack 1, Push-in **(Empfehlung)** | komposit |
-| `effekt_02b_endbild.mp4` | Wrack 1, Push-in mit Endkader | komposit |
-| `effekt_03_seitwaerts.mp4` | Wrack 1, Seitwärts **(Empfehlung)** | komposit |
-| `visa_01_automat.mp4` | VISA-Automat, über den Automaten | umfärben |
-| `visa_02_streugut.mp4` | VISA-Automat, über das Streugut | umfärben |
-| `wand_01_automat.mp4` | Wandautomat mit Absperrband | umfärben |
-| `wand_02_boden.mp4` | Wandautomat, tiefer | umfärben |
+| Bucket | lokal | Motiv | Weg |
+|---|---|---|---|
+| `_02` | `effekt_01_pushin` | Wrack 1, Push-in | komposit |
+| `_03` | `effekt_03_seitwaerts` | Wrack 1, Seitwärts | komposit |
+| `_04` | `visa_01_automat` | VISA-Automat, über den Automaten | umfärben |
+| `_05` | `visa_02_streugut` | VISA-Automat, über das Streugut | umfärben |
+| `_06` | `wand_01_automat` | Wandautomat mit Absperrband | umfärben |
+| `_07` | `effekt_02b_endbild` | Wrack 1, Push-in mit Endkader | komposit |
+| `_08` | `wand_02_boden` | Wandautomat, tiefer | umfärben |
+| `_09` | `bank_02_band` | Tobaccoland am Zaun, Band flattert | umfärben |
+| `_10` | `bank_01_zaun_v2` | Tobaccoland weiter, Blaulicht-Welle | umfärben |
 
-Drei verschiedene Tatorte für die Kategorie `effekt` — vorher gab es einen.
+`broll_effekt_01.mp4` ist der **generierte** Clip vom 26.07. mit einem fremden
+Automaten und bleibt bewusst aus dem Pool — deshalb `range(2, 11)` in
+`core/script.py`.
 
-**Verworfen:** `effekt_02_tracking.mp4` (Kamera lief aus dem Bild) sowie zehn
+**Verworfen:** `effekt_02_tracking.mp4` (Kamera lief aus dem Bild),
+`bank_01_zaun.mp4` (Blaulicht überzogen, ersetzt durch `_v2`), dazu die
 Bild-Zwischenstände aus dem gescheiterten Komposit-Versuch.
 
 ## 8. Kosten
@@ -147,11 +174,16 @@ Bild-Zwischenstände aus dem gescheiterten Komposit-Versuch.
 | Posten | Credits |
 |---|---|
 | Platten (`soul_location`, 6 Stück) | 0,36 |
-| Bildbearbeitungen (`gpt_image_2`, 8 Stück) | 24 |
-| Videoclips (`seedance_2_0`, 8 erzeugt, 1 erstattet) | 360 |
-| **gesamt** | **~384** |
+| Bildbearbeitungen (`gpt_image_2`, 16 Stück) | 48 |
+| Videoclips (`seedance_2_0`, 13 erzeugt, 1 erstattet) | 540 |
+| **gesamt** | **~532** |
 
-Stand: 1358 → **973,28**.
+Stand: 1358 → **826,28**.
+
+**Das Verhältnis ist die eigentliche Lehre:** Ein Videoclip kostet 45, eine
+Bildbearbeitung 3, eine Platte 0,06. Der komplette Bildteil eines Motivs liegt
+bei ~12 Credits — ein Viertel *eines* Clips. Jeder verworfene Clip kostet so viel
+wie fünfzehn Bildversuche. **Bei Bildern großzügig probieren, bei Videos nicht.**
 
 **Das Verhältnis bestimmt die Arbeitsweise:** Ein Videoclip kostet 45, ein
 Bildversuch 3, eine Platte 0,06. Der komplette Bildteil eines Motivs liegt bei
@@ -160,15 +192,22 @@ Videos nicht.**
 
 ## 9. Offen
 
-- [ ] Freigegebene Clips über die `/broll`-Seite des Leitstands in den Bucket
-      laden (Regel 5: Master gehören **nur** dorthin, nicht ins Repo)
-- [ ] Kategorie `kulisse` — **blockiert**, braucht Fotos eines *unbeschädigten*
-      Automaten
-- [ ] `wetter` aus `core/contracts.py` streichen (BROLL_PLAN Beschluss 1)
-- [ ] `AUTOMAT_FIX` prüfen: beschreibt einen *wandmontierten* Automaten. Von drei
+- [x] Clips in den Bucket geladen (9 Stück, `broll_effekt_02`…`_10`), Pool in
+      `core/script.py` auf `range(2, 11)`, Verteilung über 90 simulierte Fälle
+      geprüft — alle neun kommen dran
+- [ ] Kategorie `kulisse` — **der einzige verbliebene Blocker.** Braucht Fotos
+      eines *unbeschädigten* Automaten. Vier Fotos liegen vor, alle zeigen
+      Wracks. Drei Wege stehen zur Wahl: selbst fotografieren (sauber, kostenlos),
+      ein Wrack per Bild-Edit „reparieren" (3 Credits, Front wäre erfunden), oder
+      rein generieren
+- [ ] `wetter` aus `core/contracts.py` streichen (BROLL_PLAN Beschluss 1). Der
+      Pool zeigt auf `broll_wetter_01.mp4`, **die Datei liegt nicht im Bucket**
+- [ ] `AUTOMAT_FIX` prüfen: beschreibt einen *wandmontierten* Automaten. Von vier
       Fotos passt nur eines dazu, die anderen sind bodenstehend
-- [ ] VISA-Beklebung auf `master_visa.png` bleibt lesbar — bewusst so
-      entschieden, nicht übersehen
+- [ ] Marken bleiben lesbar (VISA, Tobaccoland) — bewusst so entschieden, nicht
+      übersehen
+- [ ] Automatische Tests gibt es weiterhin keine. Das ist der schwächste Punkt
+      der ganzen Kette
 
 ## 10. Die Lehre, die über B-Roll hinausgeht
 
