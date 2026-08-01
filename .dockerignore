@@ -1,0 +1,50 @@
+# Build-Kontext klein halten.
+#
+# Ohne diese Datei wandern bei jedem `docker compose build` rund 260 MB ins
+# Docker-Daemon — allein 38 Sekunden reines Uebertragen, bei jedem Bau. Der
+# groesste Posten ist assets/master (173 MB Videomaterial), das im Image nichts
+# zu suchen hat: B-Roll kommt zur Laufzeit aus dem Supabase-Bucket.
+#
+# ACHTUNG: assets/fonts MUSS im Kontext bleiben — das Dockerfile kopiert
+# assets/fonts/Oswald-Bold.ttf explizit. Deshalb hier NICHT `assets/`
+# ausschliessen, sondern gezielt assets/master.
+
+# --- Versionierung ---
+.git
+.gitignore
+
+# --- Python-Muell ---
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+
+# --- Secrets ---
+# Kommen zur Laufzeit ueber `env_file: .env` aus docker-compose.yml. Im Code
+# wird ausschliesslich os.environ gelesen, nie eine Datei — geprueft. Sie
+# gehoeren daher nicht ins Image (und schon gar nicht in ein Image, das
+# irgendwann auf den VPS wandert).
+.env
+.env.example
+
+# --- B-Roll-Master und Zwischenstaende ---
+# Liegen im Bucket `broll`, werden vom render-Worker heruntergeladen.
+assets/master/
+
+# --- Modellgewichte der Host-Werkzeuge ---
+# sam2.1_t.pt (75 MB) laedt ultralytics beim ersten freistellen.py-Lauf ins
+# Arbeitsverzeichnis. Laeuft nur auf dem Host, im Container nutzlos.
+*.pt
+
+# --- Host-Werkzeuge ---
+# tools/ braucht numpy/opencv/ultralytics, die bewusst nicht in
+# requirements.txt stehen. Wird von keinem Service importiert (geprueft).
+tools/
+
+# --- Lokale Render- und Testartefakte im Wurzelverzeichnis ---
+/*.mp4
+/*.png
+
+# --- Nur fuer den Menschen ---
+deploy/
+supabase/

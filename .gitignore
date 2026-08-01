@@ -21,3 +21,6 @@ _*.py
 # Lokale Render-/Test-Artefakte im Projektwurzelverzeichnis (nicht ins Repo)
 /*.mp4
 /*.png
+
+# Modellgewichte der Host-Werkzeuge (ultralytics laedt sie ins Arbeitsverzeichnis)
+*.pt
