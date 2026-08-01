@@ -62,6 +62,31 @@ TEXT_REGEL_ECHTFOTO = (
     "in the image, and do not invent new text."
 )
 
+# Textregel fuer GENERIERTE SZENEN OHNE Automat (cctv/blaulicht/strasse).
+# Die Whitelist aus TEXT_REGEL_GENERIERT gilt dort NICHT: Das Modell liest
+# die erlaubte Wortliste als Bestellung und malt die Woerter als Plakate,
+# Schilder und Ladenfronten in die Szene — belegt am 01.08.2026 an allen
+# sechs cctv-Clips der ersten Runde ("ACHTUNG ab 18" als Bauzaun-Plakat,
+# dazu "POLIZAI"/"ACHEUT"/"ACHUTE" als Laden-Schriftzuege). Die
+# Aufkleber-Woerter gehoeren dem Automaten; steht kein Automat im Bild,
+# gibt es nichts zu erlauben.
+TEXT_REGEL_SZENE = (
+    " STRICT TEXT RULE: no readable text anywhere in the image. Every sign, "
+    "poster, shopfront, sticker, label and license plate must be tiny, "
+    "generic and blurred beyond legibility. Do not write any words into the "
+    "scene."
+)
+
+# Variante fuer Subjekte, die POLIZEI-Beschriftung TRAGEN (Streifenwagen,
+# Absperrband): nur dort ist das Wort erlaubt, nirgendwo sonst.
+TEXT_REGEL_SZENE_POLIZEI = (
+    " STRICT TEXT RULE: the ONLY readable word allowed in the image is "
+    "\"POLIZEI\", and only on the police vehicle or barrier tape itself. "
+    "Every other sign, poster, shopfront, sticker, label and license plate "
+    "must be tiny, generic and blurred beyond legibility. Do not write any "
+    "other words into the scene."
+)
+
 # Unveraendert fuer alle bestehenden Aufrufer (Platten, Kategorien, Master).
 STIL_FIX = STIL_BASIS + TEXT_REGEL_GENERIERT
 
@@ -405,6 +430,13 @@ def build_prompt(beleuchtung: str,
 
     if subjekt is not None:
         lines.append(f"[Subjekt]: {pick(SUBJEKT, subjekt, 'Subjekt')}")
+        # Szene ohne Automat: Whitelist-Regel waere hier eine Bestellung
+        # (siehe TEXT_REGEL_SZENE). POLIZEI nur, wenn das Subjekt die
+        # Beschriftung selbst traegt (Streifenwagen, Absperrband).
+        if "POLIZEI" in SUBJEKT[subjekt][1]:
+            stil = STIL_BASIS + TEXT_REGEL_SZENE_POLIZEI
+        else:
+            stil = STIL_BASIS + TEXT_REGEL_SZENE
     else:
         if zustand is None or umfeld is None:
             raise ValueError("Automaten-Prompt braucht zustand UND umfeld "
@@ -412,8 +444,9 @@ def build_prompt(beleuchtung: str,
         lines.append(f"[Automat]: {AUTOMAT_FIX}")
         lines.append(f"[Zustand]: {pick(ZUSTAND, zustand, 'Zustand')}")
         lines.append(f"[Umfeld]: {pick(UMFELD, umfeld, 'Umfeld')}")
+        stil = STIL_FIX
 
-    lines.append(f"[Stil]: {STIL_FIX}")
+    lines.append(f"[Stil]: {stil}")
 
     if kamerabewegung and kamerabewegung != "keine":
         lines.append(f"[Kamerabewegung]: {pick(KAMERABEWEGUNG, kamerabewegung, 'Kamerabewegung')}")
