@@ -60,6 +60,15 @@ Sachlich-dokumentarisch, nie reißerisch. Nicht nur juristisch — YouTube geht
 gegen „massenproduzierte, repetitive" KI-Inhalte vor. Der Disclaimer in
 `script.DISCLAIMER` läuft automatisch an jede Caption.
 
+### 7. Ship-Gate (Kurskorrektur 01.08.2026)
+**Keine neue Produktionsqualitäts-Baustelle, solange die laufende Woche ihre
+3 Veröffentlichungen nicht hat.** Das Ziel ist ein Kanal, keine Fabrik: Vom
+25.07. bis 01.08. wurde ausschließlich Qualität gebaut und kein einziger Clip
+veröffentlicht (Befund in BETRIEB.md, Kurskorrektur-Eintrag). Erst nach dem
+Phase-1-Meilenstein (10 Shorts): Langform, Overlay-Feinschliff, B-Roll-Runden
+über das Nötige hinaus. Woche 1 läuft nur auf TikTok, ab Woche 2 gleichrangig
+TikTok + YouTube Shorts + Reels.
+
 ---
 
 ## Prinzip bei allen Guardrails

@@ -855,6 +855,30 @@ entgegen BROLL_PLAN Beschluss 3). Bis die Täter-/Flucht-Clips generiert sind,
 loopt der Mittelteil sichtbar. Nach dem Upload nur die Pool-Obergrenze in
 `script.ASSETS` anheben — der Rest läuft ohne Code-Änderung.
 
+## Update 2026-08-01 (Kurskorrektur: Zurück zum Ziel — 10 veröffentlichte Shorts)
+
+Selbstanalyse auf User-Anstoß („haben wir das Ziel aus den Augen verloren?").
+**Befund aus der DB:** 44 Fälle — 32 neu, 5 review, 4 fertig (liegen unberührt),
+**1 veröffentlicht, und zwar am 25.07., dem ersten Tag (Systemtest). Seit 7
+Tagen null Veröffentlichungen** bei Soll-Kadenz 3/Woche. Alle 20 Commits seit
+dem 25.07. bauten Produktionsqualität; jede Stufe einzeln gerechtfertigt, in
+Summe Werkzeug-Perfektionismus — die Schwelle „sendefähig" ist siebenmal
+gewandert, geliefert wurde nichts.
+
+**Beschlüsse (User, 01.08.):**
+1. **Woche 1: NUR TikTok** — Erfahrungen sammeln (Upload-Ablauf, Captions,
+   Moderation, erste Zahlen). **Ab Woche 2 gleichrangig** TikTok + YouTube
+   Shorts + Reels, dieselbe Datei am selben Tag. *Ersetzt Strategie-Beschluss 3
+   („YouTube Shorts primär") vom 26.07.*
+2. **Ship-Schwelle:** erst die cctv-Generierungsrunde (Täter/Flucht-Clips,
+   BROLL_PLAN Beschluss 3), dann wird veröffentlicht — **danach keine weitere
+   Qualitätsstufe vor dem Shippen.** Ship-Gate-Regel steht jetzt in CLAUDE.md.
+3. Die 4 alten `fertig`-Clips (Render-Stand vor Dramaturgie/Overlays) werden
+   NICHT als Erstveröffentlichungen verwendet — neu rendern oder verwerfen.
+
+**Messgröße der Woche:** `state='veroeffentlicht'` ≥ 4 (1 Bestand + 3 neue
+TikTok-Uploads). An dieser einen Zahl wird die Kurskorrektur gemessen.
+
 ## ⚠️ Gemini-TTS: 100 Anfragen pro Tag (2026-07-30 aufgelaufen)
 
 Beim Testen erschöpft: `generate_requests_per_model_per_day, limit: 100,
