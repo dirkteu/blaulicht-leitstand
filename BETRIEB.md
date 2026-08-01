@@ -532,6 +532,232 @@ Bankfiliale **wurde** am frühen Dienstagmorgen gesprengt. Unbekannte Täter
 **flüchteten** vom Tatort, eine umfangreiche Fahndung **läuft**." — **0× „sollen"**,
 kein Fallback-Zusatz, keine Warnung. Register identisch zur Quelle.
 
+## Update 2026-07-31 (B-Roll aus echtem Bildmaterial — der Engpass ist gefallen)
+
+**Problem seit dem 26.07.:** Text-Prompts erzwingen keine Objektkonstanz. Zwei
+Läufe mit wörtlich identischem `AUTOMAT_FIX`-Block lieferten zwei verschiedene
+Automaten. Der Ausweg aus BROLL_PLAN.md (Masterbild-Kette) war unumgesetzt und
+hing selbst wieder an einem *generierten* Master.
+
+**Der Weg jetzt: Konsistenz kommt aus Pixeln, nicht aus Prompts.** Der Automat
+wird nie generiert, sondern aus einem echten Foto freigestellt und in eine
+**leer** generierte Nachtszene gesetzt. Das Modell erfindet nur noch die
+Bewegung. Kette und Kosten:
+
+| Schritt | Werkzeug | Kosten |
+|---|---|---|
+| Freistellen (Alphakanal) | `tools/freistellen.py` | 0 |
+| Leere Platte, **ohne** Objekt | `soul_location` | 0,06 |
+| Einsetzen, Licht messen, Schatten | `tools/komposit.py` | 0 |
+| Start-/Endkader schneiden | `tools/kader.py` | 0 |
+| Bild→Video | `seedance_2_0` | 45 / Clip |
+
+Bedient über den Slash-Command **`/broll`**. BROLL_PLAN.md ist entsprechend
+als teilweise überholt markiert.
+
+**Fünf Erkenntnisse, jede an einem Fehlschlag bezahlt:**
+
+1. **Nacht-Platten sind reines Natriumlicht, kein „dunkles Blau".** Messung von
+   `szene_b.png`: R 0,133 / G 0,095 / **B 0,012**. Der erste Kompositversuch gab
+   dem Objekt kühle Schatten (Filmlehre: Tiefen blau) — Ergebnis war braune
+   Pampe. Deshalb misst `komposit.py` die Lichtfarbe aus dem Vordergrund der
+   Platte, statt sie anzunehmen. Nebeneffekt: bei einer `blaulicht`-Platte tönt
+   sich das Objekt automatisch blau, ohne Codeänderung.
+2. **Die Helligkeit nimmt zur KAMERA hin zu, nicht zur sichtbaren Lampe hin.**
+   Gemessen: Gras vorn 0,096–0,128, Asphalt Mitte 0,052. Der Helligkeitsverlauf
+   auf dem Objekt läuft entsprechend nach unten heller. Andersherum sieht es
+   sofort falsch aus.
+3. **Zielkonflikt bei Bild→Video, dreimal reproduziert:**
+   nur `start_image` → Atmosphäre (Rauch), aber unkontrollierte Kamera;
+   `start_image` + `end_image` → kontrollierte Kamera, aber **kein** Rauch.
+   Voreinstellung ist Kontrolle: eine Fahrt, die aus dem Bild läuft, ist
+   Ausschuss (so geschehen bei `effekt_02_tracking`), fehlender Dunst nur
+   weniger Stimmung.
+4. **Der Endkader ist ein Ziel, keine Fessel.** Gemessen an je einem Clip:
+   Zoomfahrt landet ~20 % **zu eng**, Seitwärtsfahrt ~10 % **zu kurz**. Wer
+   exakt ankommen will, gibt den Endkader entsprechend großzügiger vor.
+   Seitwärtsfahrten trifft das Modell deutlich genauer als Zoomfahrten.
+5. **Der Moderationsfilter wertet ohne Verneinung.** Der Prompt-Zusatz
+   „no fire, no flames, no sparks" — gedacht, um eine Rauchsäule zu vermeiden —
+   ließ den Job als `status: nsfw` abbrechen. **Identisches Bildmaterial lief
+   ohne diese Wörter durch.** Feuer- und Sprengbegriffe in Anim-Prompts also
+   komplett meiden, auch verneint. Hart geprüft in
+   `broll_prompts.pruefe_anim_prompt()`; `build_anim_prompt()` wirft ValueError.
+   Abgerechnet wird ein abgelehnter Lauf zunächst und dann erstattet (−45/+45).
+
+**Weiteres:**
+- **Higgsfield-Presets ablehnen** (`declined_preset_id`). Der Vorschlag
+  „IN THE DARK" hätte eigene Kamera und Farbgebung mitgebracht.
+- **Die Platte ist mit 1152 px das auflösungsbegrenzende Glied**, nicht das
+  3000-px-Foto. Kader daraus werden hochskaliert; `kader.py` warnt ab 1,4×.
+  Bei 1,34× war es im Bewegtbild unauffällig.
+- **Grenze:** Die Lichtrichtung auf dem Objekt ist aus dem Quellfoto eingebacken.
+  Farbe und Pegel lassen sich umrechnen, die Richtung nicht.
+
+**Stand:** `effekt`-Runde 1 fertig, 4 Clips in `assets/master/`, 2 empfohlen.
+Verbraucht 180,24 Credits (1358 → 1177,76). `kulisse` ist blockiert, solange
+keine Original-Fotos des *unbeschädigten* Automaten vorliegen.
+
+## Update 2026-07-31 abends (Umfärben schlägt Komposit — und drei Korrekturen)
+
+Der Komposit-Weg von heute Nachmittag ist an einem **zweiten** Wrackfoto
+gescheitert, und zwar an der Perspektive. Daraus ist ein besserer Weg entstanden.
+
+**Der Fehler:** `BLICKWINKEL_FIX` war eine feste Konstante („steeply down,
+roughly 45 degrees"), geschrieben nach dem ersten Wrackfoto. Das zweite Foto ist
+mit 25–30 Grad deutlich flacher aufgenommen. Ein Freisteller ist ein 2D-Ausschnitt
+mit **eingebackenem** Blickwinkel — er laesst sich weder drehen noch kippen. Die
+Platte muss sich also nach dem Foto richten, nie umgekehrt. `BLICKWINKEL` ist
+deshalb jetzt eine Auswahlliste und **Pflichtparameter** von
+`build_platte_prompt()`; ohne Angabe wirft die Funktion.
+
+**Der bessere Weg — umfaerben statt komponieren.** Statt das Objekt
+freizustellen und in eine generierte Platte zu setzen, wird das **Originalfoto**
+per `gpt_image_2` auf Nacht umgefaerbt und dabei nur der Hintergrund ersetzt:
+
+```
+FOREGROUND, keep completely untouched:  Wrack, Boden, Streugut
+BACKGROUND, replace entirely:           Haus, Zaun, Poller -> dunkle Vegetation
+Relight:                                Tag -> Nacht mit Blaulicht
+```
+
+Die Perspektive kann nicht kippen, weil sie nie verlassen wird. Gebaut als
+`broll_prompts.build_umfaerben_prompt()`; die Reihenfolge (erst was bleiben MUSS,
+dann was weg SOLL) ist Absicht — umgekehrt raeumt das Modell zu viel weg.
+
+**Belegter Durchlauf** (Foto `1000004289.jpg`, Automat mit VISA-Beklebung auf
+Gehweg): Haus, gruener Gartenzaun, Sichtschutzwand und Poller vollstaendig
+ersetzt, Wrack samt Streugut und Metallschiene pixelgenau erhalten. Zwei Clips
+`visa_01_automat.mp4` und `visa_02_streugut.mp4`.
+
+**Kostenverhaeltnis, das die Arbeitsweise bestimmt:**
+
+| Posten | Credits |
+|---|---|
+| 4 Platten (Komposit-Versuch) | 0,24 |
+| 2 Umfaerbungen | 6 |
+| 2 Hybriden (umfaerben + Hintergrundtausch) | 6 |
+| 2 Videoclips | 90 |
+| **gesamt** | **102,24** |
+
+Der gesamte Bildteil kostet ein Viertel **eines** Clips. Bei Bildern also
+grosszuegig probieren, bei Videos nicht.
+
+### Drei Korrekturen an frueheren Eintraegen
+
+1. **Die Landungs-Faustregel ist widerlegt.** Der Eintrag von heute Nachmittag
+   („Zoom +20 %, Seitwaerts −10 %") beruhte auf je einem Clip. Von drei
+   Seitwaertsfahrten lag eine ~10 % zu kurz, eine praktisch exakt, eine deutlich
+   zu weit. Die Abweichung **streut** (bis ca. ±20 %), sie ist nicht
+   systematisch. Der Korrekturfaktor ist aus `kader.py` entfernt; geblieben ist
+   der Hinweis, den letzten Frame zu pruefen.
+2. **Streugut freistellen braucht Farbkontrast zum Boden.** Beim ersten Foto lag
+   es auf dunklem Asphalt und gruenem Gras — leicht trennbar. Beim zweiten auf
+   **grauen Gehwegplatten**, und die Teile sind selbst grau-weiss: die
+   Farbtrennung in `freistellen.py --nest` liefert dort fast nichts (574 bzw.
+   446 px). Keine Einstellungssache, sondern eine Bedingung des Verfahrens.
+3. **`komposit.py` hatte eine stille Fehlerquelle.** Bei einer Platte mit
+   stockschwarzem Boden (gemessener Vordergrund 0,002) rechnete es das Objekt auf
+   0,004 herunter und lieferte kommentarlos eine schwarze Silhouette. Neu:
+   `VORDERGRUND_MIN = 0.03` samt Warnung, dass die Platte vermutlich untauglich ist.
+
+### Die STRICT TEXT RULE schadet beim Umfaerben (kontrolliert nachgewiesen)
+
+Am Wandautomaten mit Polizei-Absperrband (`1000001880.jpg`) aufgefallen und
+anschliessend sauber isoliert: **identisches Foto, identische Vorder- und
+Hintergrundanweisung, einzige Aenderung war die Textregel.**
+
+| | Absperrband im Ergebnis |
+|---|---|
+| mit `STRICT TEXT RULE` (aus STIL_FIX) | „**ab 18**" und „**POLIZEI**" — neu beschriftet |
+| mit `TEXT_REGEL_ECHTFOTO` | echte Aufschrift „POLIZEIABSPERRUNG" erhalten |
+
+**Die Ursache:** Die Regel wurde fuer GENERIERTE Bilder geschrieben, wo erfundene
+Fantasieschrift das Risiko ist. Auf ein **bearbeitetes Echtfoto** angewendet
+kehrt sie sich um — das Modell sieht echte Schrift, haelt sie fuer verboten und
+schreibt sie auf die erlaubte Wortliste um. Heraus kommt „ab 18" auf einem
+Polizei-Absperrband.
+
+**Der Schaden ging weiter als nur der Text.** Dieselbe Regel leerte die
+beschriftete Werbetafel am Automaten zu einer weissen Platte und duennte das
+Streugut aus — obwohl der Prompt den Vordergrund dreimal als unantastbar
+bezeichnete. Die Textregel hat die Vordergrund-Anweisung ueberstimmt. Mit der
+Erhaltungsregel ist die Werbetafel wieder da.
+
+**Umgesetzt:** `STIL_FIX` ist aufgeteilt in `STIL_BASIS` + `TEXT_REGEL_GENERIERT`
+und bleibt fuer alle bestehenden Aufrufer **byte-identisch** (geprueft).
+`build_umfaerben_prompt()` nutzt stattdessen `STIL_BASIS` +
+`TEXT_REGEL_ECHTFOTO`. Merksatz: Echte Schrift auf einem echten Foto ist keine
+Halluzination, sondern Beleg.
+
+### Wann welcher Weg
+
+**umfaerben** ist der Standard. **komposit** ist richtig, wenn das Objekt an einen
+*anderen* Ort soll — die Kette dafuer steht und ist verifiziert. Beides bedient
+der Slash-Command `/broll`.
+
+## Update 2026-08-01 (Tiefen-Debug des Stacks · .dockerignore · error-Feld gefixt)
+
+Gruendlicher Durchgang durch alle neun Container. **Der Stack ist gesund** —
+0 Neustarts, kein OOM, kein Fehler-Exit, kein Traceback in irgendeinem Log,
+Scheduler mit genau zwei Jobs (07:00/19:00, keine Dubletten), Speicherverbrauch
+26–70 MB je Container von 3,7 GB.
+
+**Zwei Verdachtsfaelle geprueft und entkraeftet** — beide sind hier notiert,
+damit sie nicht noch einmal untersucht werden:
+
+1. **HTMX-Poller vervielfacht sich nicht.** Die Fall-Detailseite pollt
+   `/cases/<id>/partials/status` mit **konstant 14 Anfragen/Minute** ueber acht
+   Minuten gemessen — die in CLAUDE.md dokumentierte Verschachtelung tritt
+   nicht auf.
+2. **Redis laeuft nicht heiss.** Im Log stehen 113 BGSAVE-Vorgaenge, das sah
+   nach einer Schleife aus. Sie verteilen sich aber ueber **6,7 Tage** (der
+   redis-Container wird nur neu *gestartet*, nie neu *erstellt*, deshalb reicht
+   sein Log weiter zurueck als der der uebrigen Dienste) — also ein
+   Speichervorgang alle 86 Minuten, exakt wie die Policy `3600 1` es vorsieht.
+   Live gemessen: **1 Kommando in 10 Sekunden**.
+
+### Gefixt: `set_state` liess das `error`-Feld stehen
+
+`core/supa.py:set_state()` schrieb `error` nur, wenn ein Fehler uebergeben wurde
+(`if error is not None`). Bei Erfolg blieb die alte Meldung im Datensatz. Fall
+`fcaa7933` stand deshalb in `review`, hatte eine Tonspur — und trug die
+429-Meldung vom 30.07. weiter, was im Leitstand ein ⚠ ohne Anlass erzeugte.
+
+Jetzt wird `error` **immer** mitgeschrieben, ohne Angabe also auf NULL gesetzt.
+Alle Aufrufer ohne `error=` sind Erfolgspfade (geprueft in tts/render/publish).
+Damit ist der alte TODO „Worker leeren error-Feld nicht bei Erfolg" erledigt —
+er war nicht kosmetisch, sondern erzeugte Fehlalarme.
+
+### Aufgeraeumt
+
+- **Zwei Faelle** hingen seit dem 30.07. in `in_analyse` (Glinde Score 90,
+  Kreis Bergstrasse Score 75) — Spec fertig, nur die Vertonung fehlte wegen der
+  Gemini-Tagesquote. Neu eingereiht, beide in ~48 s durchgelaufen, jetzt in
+  `review` mit Tonspur und leerem `error`-Feld.
+- **Drei veraltete Eintraege** in der `FailedJobRegistry` der tts-Queue
+  entfernt (einer davon gegenstandslos, sein Fall war laengst weitergelaufen).
+  Alle sechs Queues jetzt komplett leer.
+- **Build-Cache**: 8,11 GB → 1,01 GB, **7,1 GB zurueckgeholt** (`docker builder
+  prune`). Die Images selbst sind nur 1,07 GB.
+
+### Neu: `.dockerignore`
+
+Der Build-Kontext war **259 MB**, allein 38 Sekunden reines Uebertragen bei
+jedem Bau. Groesster Posten: `assets/master` (173 MB Videomaterial) und
+`sam2.1_t.pt` (75 MB, das SAM-Modell der Host-Werkzeuge).
+
+**Bauzeit ~60 s → 9 s.**
+
+Zwei Dinge dabei beachten:
+- **`assets/` darf NICHT komplett ausgeschlossen werden** — das Dockerfile
+  kopiert `assets/fonts/Oswald-Bold.ttf` explizit, der Bau braeche. Deshalb
+  gezielt nur `assets/master/`.
+- **`.env` ist jetzt ausgeschlossen.** Sie wurde bisher von `COPY . .` ins Image
+  kopiert, obwohl compose sie zur Laufzeit per `env_file` reicht und der Code
+  ausschliesslich `os.environ` liest (geprueft). Fuer ein Image, das auf den
+  VPS soll, ist das der wichtigere Teil der Aenderung.
+
 ## ⚠️ Gemini-TTS: 100 Anfragen pro Tag (2026-07-30 aufgelaufen)
 
 Beim Testen erschöpft: `generate_requests_per_model_per_day, limit: 100,
