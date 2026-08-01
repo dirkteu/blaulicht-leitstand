@@ -55,10 +55,19 @@ def update_case(case_id: str, patch: dict[str, Any]) -> dict[str, Any]:
 
 
 def set_state(case_id: str, state: str, error: Optional[str] = None) -> None:
-    patch: dict[str, Any] = {"state": state}
-    if error is not None:
-        patch["error"] = error
-    _tbl("cases").update(patch).eq("id", case_id).execute()
+    """Zustand setzen. `error` wird IMMER mitgeschrieben — ohne Angabe also auf
+    NULL zurueckgesetzt.
+
+    Vorher wurde das Feld nur im Fehlerfall geschrieben und blieb bei Erfolg
+    stehen. Ein Fall, der nach einem fehlgeschlagenen Versuch beim zweiten Mal
+    durchlief, schleppte die alte Meldung mit und erzeugte im Leitstand ein ⚠,
+    obwohl nichts im Argen war (beobachtet 01.08.2026 an fcaa7933: Zustand
+    `review`, Tonspur vorhanden, trotzdem die 429-Meldung vom 30.07. im Feld).
+
+    Alle Aufrufer ohne `error=` sind Erfolgspfade — geprueft in workers/tts.py,
+    render.py und publish.py.
+    """
+    _tbl("cases").update({"state": state, "error": error}).eq("id", case_id).execute()
 
 
 def list_cases(min_score: int = 0, state: Optional[str] = None, limit: int = 200,
