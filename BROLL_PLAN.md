@@ -105,9 +105,13 @@ keine Konsistenz.** Konsistenz kommt ab jetzt aus einem Masterbild, nie mehr aus
 - [ ] ~~`kulisse`-Master bauen — **blockiert:** braucht Original-Fotos des *unbeschädigten* Automaten~~
       **hinfällig (01.08.2026):** Seit der Vier-Teile-Klammer (UEBERLEGUNG_DRAMATURGIE.md)
       hängt `kulisse` an keiner Szenen-Rolle mehr — blockiert nichts. Bei Bedarf später.
-- [ ] **Täter-/Flucht-Clips für `cctv` generieren (Beschluss 3) — jetzt der EINZIGE Engpass:**
-      story+zahlen fordern 6 verschiedene Clips an, im Bucket liegt nur der Altclip
-      vom 26.07. (zeigt zudem den intakten Automaten). Nach Upload Pool-Obergrenze
-      in `script.ASSETS` anheben — mehr braucht es nicht.
+- [x] **Täter-/Flucht-Clips für `cctv` generiert (Beschluss 3) — erledigt 01.08.2026:**
+      6 Clips (Vorfahrt, rennt, Gestalten mit Beutetasche, Roller, Fluchtwagen,
+      leere Straße), Seedance 2.0 t2v, 135 Credits, alle 6 vom User freigegeben
+      und als `broll_cctv_02`–`07` im Bucket. Pool in `script.ASSETS` auf
+      `range(2, 8)` — der Altclip `_01` (intakter Automat) bleibt draußen wie
+      `effekt_01`. Neue SUBJEKT-Einträge in `core/broll_prompts.py`.
+      **Damit ist kein B-Roll-Engpass mehr offen — ab hier gilt das Ship-Gate
+      (CLAUDE.md §7): veröffentlichen, nicht weiter generieren.**
 - [ ] `wetter` aus `core/contracts.py` streichen (Beschluss 1, unverändert offen)
 - [ ] `/broll`-Seite (api/main.py + Templates) um die Platten-Prompts erweitern (optional — der Slash-Command deckt den Weg bereits ab)

@@ -64,11 +64,17 @@ EFFEKT_SAETZE = [
     ["broll_effekt_09.mp4", "broll_effekt_10.mp4"],                          # Tobaccoland am Zaun
 ]
 
+# `cctv` startet bei 2: broll_cctv_01.mp4 (26.07.) zeigt den INTAKTEN
+# Automaten und verstoesst damit gegen BROLL_PLAN Beschluss 2/3 (nur
+# kulisse/effekt zeigen den Automaten). 02-07 sind die Taeter/Flucht-Clips
+# der Generierungsrunde vom 01.08. (Vorfahrt, rennt, Gestalten, Roller,
+# Fluchtwagen, leere Strasse — freigegeben vom User).
+#
 # Die uebrigen Kategorien stehen weiter auf 1 — dort liegt je ein Clip.
 ASSETS = {
     "street":    [f"broll_strasse_{i:02d}.mp4"   for i in range(1, 2)],
     "blaulicht": [f"broll_blaulicht_{i:02d}.mp4" for i in range(1, 2)],
-    "cctv":      [f"broll_cctv_{i:02d}.mp4"      for i in range(1, 2)],
+    "cctv":      [f"broll_cctv_{i:02d}.mp4"      for i in range(2, 8)],
     "weather":   [f"broll_wetter_{i:02d}.mp4"    for i in range(1, 2)],
     "location":  [f"broll_kulisse_{i:02d}.mp4"   for i in range(1, 2)],
     "effect":    [clip for satz in EFFEKT_SAETZE for clip in satz],
