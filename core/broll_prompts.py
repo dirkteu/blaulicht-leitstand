@@ -327,6 +327,39 @@ SUBJEKT: dict[str, tuple[str, str]] = {
         "German-make car speeding away with red tail lights streaking into "
         "motion blur, license plates blurred or not visible, no people.",
     ),
+    # cctv-Neudefinition (BROLL_PLAN Beschluss 3, umgesetzt 01.08.2026):
+    # Taeter-Silhouetten im Ueberwachungs-Look, OHNE Automat. Zwei harte
+    # Regeln in jedem Text: (1) NIE Gesichter — nur dunkle Silhouetten von
+    # hinten oder aus Distanz, keine identifizierbaren Merkmale; (2) NIE die
+    # Tat selbst — kein Werkzeug am Objekt, keine Handlung am Automaten,
+    # nur Ankunft, Bewegung, Flucht (Guardrail "Kategorie ja, Rezept nein"
+    # gilt auch fuer Bilder).
+    "taeter_vorfahrt": (
+        "Täter-Vorfahrt (cctv)",
+        "A dark car pulling up on a deserted German street at night, doors "
+        "opening, two hooded figures seen only as black silhouettes from "
+        "behind, faces never visible, no identifiable features, license "
+        "plates blurred or not visible.",
+    ),
+    "taeter_rennt": (
+        "Täter rennt (cctv)",
+        "A single hooded figure sprinting across an empty German street at "
+        "night, seen from a distance as a dark silhouette in motion blur, "
+        "face never visible, no identifiable features.",
+    ),
+    "taeter_gestalten": (
+        "Täter-Gestalten (cctv)",
+        "Two masked figures in dark clothing hurrying along a house wall at "
+        "night carrying a heavy duffel bag, seen from behind as silhouettes "
+        "only, faces never visible, no identifiable features.",
+    ),
+    "flucht_roller": (
+        "Flucht-Roller (cctv)",
+        "A small dark motor scooter speeding away down a narrow German "
+        "street at night, rider as a dark silhouette from behind, red tail "
+        "light streaking, license plate blurred or not visible, face never "
+        "visible.",
+    ),
     "leere_strasse": (
         "Leere Straße (ungelöst)",
         "A deserted German street at cold blue dawn, fresh black tire skid marks "
