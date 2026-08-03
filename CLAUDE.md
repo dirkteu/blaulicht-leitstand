@@ -128,5 +128,6 @@ factory defaults" klicken — das löscht alle lokalen Images und Container.
 ## Wo du weiterliest
 
 - [`BETRIEB.md`](BETRIEB.md) — Änderungshistorie mit Begründungen, Diagnose-Schnipsel
-- [`BROLL_PLAN.md`](BROLL_PLAN.md) — beschlossene B-Roll-Master-Kette (noch unumgesetzt)
+- [`BROLL_PLAN.md`](BROLL_PLAN.md) — geltende B-Roll-Beschlüsse (Nummern sind Anker im Code)
+- [`PROJEKTBUCH_BROLL.md`](PROJEKTBUCH_BROLL.md) — B-Roll-Lehren: was schiefging und warum
 - [`UMSETZUNG.md`](UMSETZUNG.md) · [`README.md`](README.md) — Aufbau und Struktur

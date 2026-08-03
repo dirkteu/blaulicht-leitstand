@@ -60,10 +60,16 @@ AR = "24000"           # einheitliche Audio-Parameter fuer sauberes Concat
 # --- Gemini-TTS-Konfiguration (ENV) ---
 GEMINI_TTS_MODEL = os.environ.get("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts")
 GEMINI_VOICE = os.environ.get("GEMINI_VOICE", "Orus")   # feste, bestimmte Stimme
+# WORTLAUT-GLEICHSTAND MIT `.env.example` — bitte halten. Die ENV gewinnt immer,
+# der Default hier greift nur ohne `.env`. Steht beides auseinander, liest man
+# den Prompt im Code und haelt ihn faelschlich fuer den, der rausgeht: bis
+# 03.08.2026 sagte der Default "langsam", die gelebte Fassung "zuegiges Tempo,
+# keine Kunstpausen" — also das Gegenteil. Aendert sich die Regie, beide Stellen
+# anfassen (`.env` des Betriebs zusaetzlich).
 TTS_STYLE = os.environ.get(
     "TTS_STYLE",
-    "Sprich als ruhiger, tiefer True-Crime-Doku-Erzähler: langsam, düster, "
-    "mit Spannung — sachlich, nicht reißerisch.",
+    "Sprich als tiefer True-Crime-Doku-Erzähler: düster und mit Spannung, aber "
+    "in flüssigem, zügigem Tempo — sachlich, nicht reißerisch, keine Kunstpausen.",
 )
 GEMINI_SR = 24000      # Gemini liefert PCM mono 16-bit @ 24 kHz (= AR)
 GEMINI_MAX_RETRIES = 5     # Versuche bei 429 (Free-Tier: 3 Req/min)

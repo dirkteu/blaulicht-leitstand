@@ -3,8 +3,9 @@
 Wie der B-Roll-Engpass gefallen ist, was dabei schiefging und was am Ende steht.
 Ein Tag, zwei Sackgassen, ein tragfähiger Weg.
 
-**Gilt zusammen mit:** [`BROLL_PLAN.md`](BROLL_PLAN.md) (Beschlüsse, teilweise überholt) ·
-[`BETRIEB.md`](BETRIEB.md) (Änderungshistorie) · [`CLAUDE.md`](CLAUDE.md) (harte Regeln)
+**Gilt zusammen mit:** [`BROLL_PLAN.md`](BROLL_PLAN.md) (geltende Beschlüsse) ·
+[`BETRIEB.md`](BETRIEB.md) (Änderungshistorie) · [`CLAUDE.md`](CLAUDE.md) (harte Regeln) ·
+`core/broll_prompts.py` (alle Prompt-Wortlaute)
 
 ---
 
@@ -185,29 +186,20 @@ Bildbearbeitung 3, eine Platte 0,06. Der komplette Bildteil eines Motivs liegt
 bei ~12 Credits — ein Viertel *eines* Clips. Jeder verworfene Clip kostet so viel
 wie fünfzehn Bildversuche. **Bei Bildern großzügig probieren, bei Videos nicht.**
 
-**Das Verhältnis bestimmt die Arbeitsweise:** Ein Videoclip kostet 45, ein
-Bildversuch 3, eine Platte 0,06. Der komplette Bildteil eines Motivs liegt bei
-~12 Credits — ein Viertel *eines* Clips. **Bei Bildern großzügig probieren, bei
-Videos nicht.**
+## 9. Zwei Dinge, die man wissen muss
 
-## 9. Offen
+**Marken bleiben lesbar** (VISA, Tobaccoland). Das ist eine bewusste
+Entscheidung, kein Versehen: Auf einem echten Foto ist die Aufschrift Beleg, und
+`TEXT_REGEL_ECHTFOTO` verbietet ausdrücklich, sie umzuschreiben.
 
-- [x] Clips in den Bucket geladen (9 Stück, `broll_effekt_02`…`_10`), Pool in
-      `core/script.py` auf `range(2, 11)`, Verteilung über 90 simulierte Fälle
-      geprüft — alle neun kommen dran
-- [ ] Kategorie `kulisse` — **der einzige verbliebene Blocker.** Braucht Fotos
-      eines *unbeschädigten* Automaten. Vier Fotos liegen vor, alle zeigen
-      Wracks. Drei Wege stehen zur Wahl: selbst fotografieren (sauber, kostenlos),
-      ein Wrack per Bild-Edit „reparieren" (3 Credits, Front wäre erfunden), oder
-      rein generieren
-- [ ] `wetter` aus `core/contracts.py` streichen (BROLL_PLAN Beschluss 1). Der
-      Pool zeigt auf `broll_wetter_01.mp4`, **die Datei liegt nicht im Bucket**
-- [ ] `AUTOMAT_FIX` prüfen: beschreibt einen *wandmontierten* Automaten. Von vier
-      Fotos passt nur eines dazu, die anderen sind bodenstehend
-- [ ] Marken bleiben lesbar (VISA, Tobaccoland) — bewusst so entschieden, nicht
-      übersehen
-- [ ] Automatische Tests gibt es weiterhin keine. Das ist der schwächste Punkt
-      der ganzen Kette
+**Automatische Tests gibt es keine.** Das ist der schwächste Punkt der ganzen
+Kette und war es am 31.07. schon.
+
+Offene Aufgaben stehen nicht mehr hier, sondern in
+[`BROLL_PLAN.md`](BROLL_PLAN.md) — ein Projektbuch hält Erfahrungen fest, keine
+Todo-Liste. Die vier Punkte, die hier bis 03.08.2026 standen, sind erledigt oder
+hinfällig: `wetter` gestrichen, `AUTOMAT_FIX` gelöscht, `kulisse` hängt seit der
+Vier-Teile-Klammer an keiner Szenen-Rolle mehr, die effekt-Clips sind im Bucket.
 
 ## 10. Die Lehre, die über B-Roll hinausgeht
 

@@ -64,18 +64,34 @@ EFFEKT_SAETZE = [
     ["broll_effekt_09.mp4", "broll_effekt_10.mp4"],                          # Tobaccoland am Zaun
 ]
 
-# `cctv` startet bei 2: broll_cctv_01.mp4 (26.07.) zeigt den INTAKTEN
-# Automaten und verstoesst damit gegen BROLL_PLAN Beschluss 2/3 (nur
-# kulisse/effekt zeigen den Automaten). 02-07 sind die Taeter/Flucht-Clips
-# der Generierungsrunde vom 01.08. (Vorfahrt, rennt, Gestalten, Roller,
-# Fluchtwagen, leere Strasse — freigegeben vom User).
+# `cctv` als EXPLIZITE Liste statt als range() — wie EFFEKT_SAETZE. Ein
+# Rauswurf ist dann eine gestrichene Zeile, und man sieht im Code, welches
+# Motiv gemeint ist. broll_cctv_01.mp4 (26.07.) bleibt draussen: zeigt den
+# INTAKTEN Automaten, verstoesst gegen BROLL_PLAN Beschluss 2/3 (nur
+# kulisse/effekt zeigen den Automaten).
 #
+# ⚠ SICHTUNG OFFEN (03.08.2026): Diese sechs stammen aus der Runde vom 01.08.,
+# die noch mit der alten Whitelist-Textregel lief — also mit genau dem Fehler,
+# der bei broll_prompts.TEXT_REGEL_SZENE dokumentiert ist ("ACHTUNG ab 18" als
+# Bauzaun-Plakat, "POLIZAI"/"ACHEUT" als Laden-Schriftzuege). Der Upload kam
+# VOR dem Befund (git: bb9dfbf, dann 8902d96), ein Rollback des Pools nie.
+# Was bei der Sichtung durchfaellt, wird hier gestrichen.
+# Motiv-Zuordnung laut BROLL_PLAN.md — bei der Sichtung bestaetigen.
+CCTV_CLIPS = [
+    "broll_cctv_02.mp4",   # Taeter-Vorfahrt
+    "broll_cctv_03.mp4",   # Taeter rennt
+    "broll_cctv_04.mp4",   # Taeter-Gestalten mit Beutetasche
+    "broll_cctv_05.mp4",   # Flucht-Roller
+    "broll_cctv_06.mp4",   # Fluchtwagen
+    "broll_cctv_07.mp4",   # leere Strasse (ungeloest)
+]
+
 # Die uebrigen Kategorien stehen weiter auf 1 — dort liegt je ein Clip.
 # `weather` gestrichen per BROLL_PLAN Beschluss 1 (umgesetzt 01.08.2026).
 ASSETS = {
     "street":    [f"broll_strasse_{i:02d}.mp4"   for i in range(1, 2)],
     "blaulicht": [f"broll_blaulicht_{i:02d}.mp4" for i in range(1, 2)],
-    "cctv":      [f"broll_cctv_{i:02d}.mp4"      for i in range(2, 8)],
+    "cctv":      list(CCTV_CLIPS),
     "location":  [f"broll_kulisse_{i:02d}.mp4"   for i in range(1, 2)],
     "effect":    [clip for satz in EFFEKT_SAETZE for clip in satz],
 }
@@ -90,8 +106,7 @@ ASSETS = {
 # `location` (intakter Automat) und `weather` haengen damit an keiner Rolle
 # mehr — das fehlende Foto des intakten Automaten blockiert nichts.
 # `cctv` traegt Teil 3 und ist laut BROLL_PLAN Beschluss 3 neu definiert
-# (Taeter-Silhouetten/Fluchtfahrzeug OHNE Automat); bis zur naechsten
-# Generierungsrunde liegt dort nur der Altclip vom 26.07.
+# (Taeter-Silhouetten/Fluchtfahrzeug OHNE Automat) — Pool siehe CCTV_CLIPS.
 ROLE_BROLL = {
     "hook":        "blaulicht",
     "eskalation":  "effect",
@@ -362,10 +377,6 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
             "caption": f"{ort}: {tat}. Was ist da los? 👇\n\n{DISCLAIMER}",
             "disclaimer": DISCLAIMER,
             "hashtags": hashtags,
-            "thumbnail_prompt": (
-                f"dark night street in {ort}, red and blue police lights, dramatic, "
-                "empty space on the left for bold text, true-crime style"
-            ),
         },
         "voiceover": voiceover,
         "scenes": scenes,

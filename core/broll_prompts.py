@@ -3,23 +3,32 @@
 core/broll_prompts.py  —  Higgsfield-Prompt-Baukasten (Single Source of Truth)
 ===============================================================================
 
-Ziel: IMMER derselbe Automat, IMMER dieselbe Qualität. Text-zu-Video wuerfelt
-sonst bei jedem Lauf Automat/Marken/Look neu. Deshalb leben die fixen
-Prompt-Bloecke hier als Code-Konstanten — sie koennen nicht "aus Versehen"
-umformuliert werden. Variabel sind NUR Beleuchtung/Zustand/Umfeld/Kamera-
-bewegung, und zwar ausschliesslich aus den festen Auswahl-Dicts unten.
+Ziel: IMMER dieselbe Handschrift. Text-zu-Video wuerfelt sonst bei jedem Lauf
+Look, Kamera und Schrift neu. Deshalb leben die fixen Prompt-Bloecke hier als
+Code-Konstanten — sie koennen nicht "aus Versehen" umformuliert werden.
+Variabel sind NUR Beleuchtung, Subjekt, Ort, Blickwinkel und Kamerabewegung,
+und zwar ausschliesslich aus den festen Auswahl-Dicts unten.
 
-Jeder Prompt folgt dem vom Nutzer vorgegebenen Label-Format:
+Der Automat selbst entsteht NIE aus Text (BROLL_PLAN: "Konsistenz kommt aus
+Pixeln, nicht aus Prompts") — er kommt als echtes Foto ueber den Umfaerb- oder
+den Komposit-Weg ins Bild.
+
+Szenen-Prompts folgen dem Label-Format:
 
     [Kamera]:         fix
     [Beleuchtung]:    variabel (Auswahlliste)
-    [Automat]:        fix, woertlich identisch   (bzw. [Subjekt] bei Nicht-Automat)
-    [Zustand]:        variabel (Auswahlliste)
-    [Umfeld]:         variabel (Auswahlliste)
-    [Stil]:           fix
-    [Kamerabewegung]: nur bei Video-Prompts; bei Masterbildern weglassen
+    [Subjekt]:        variabel (Auswahlliste)
+    [Stil]:           fix, inklusive Textregel
+    [Kamerabewegung]: nur bei Video-Prompts
 
-Genutzt von api/main.py (Prompt-Generator auf der /broll-Seite).
+Genutzt von api/main.py (Prompt-Generator auf der /broll-Seite) und vom
+Slash-Command /broll (Umfaerb-, Platten- und Anim-Prompts).
+
+AM 01.08.2026 ENTFERNT (Wortlaute in git log, Begruendung in BETRIEB.md):
+AUTOMAT_FIX, STIL_FIX, TEXT_REGEL_GENERIERT (die Whitelist), ZUSTAND, UMFELD,
+MASTER_PRESETS, WORKFLOW_HINWEIS, build_master_prompt(), die Subjekte
+regen/nebel und die Kategorie-Presets effekt/kulisse/strasse/wetter. Grund:
+Der Automat entsteht nur noch aus echten Fotos, `wetter` ist gestrichen.
 """
 
 from __future__ import annotations
@@ -38,12 +47,6 @@ STIL_BASIS = (
     "Authentic Germany. No text watermarks, no readable license plates, "
     "no recognizable faces."
 )
-
-# GELOESCHT (Aufraeumen 01.08.2026): TEXT_REGEL_GENERIERT — die Whitelist
-# (ACHTUNG/ab 18/POLIZEI als einzige erlaubte Woerter) gehoerte zum
-# Automat-per-Text-Weg. Der ist seit BROLL_PLAN verboten („Konsistenz kommt
-# nie mehr aus Text"), und in Szenen ohne Automat wurde die Whitelist zur
-# Bestellung (siehe TEXT_REGEL_SZENE). Wortlaut bei Bedarf: git log.
 
 # Textregel fuer BEARBEITETE ECHTFOTOS. Hier kehrt sich die obige Regel um und
 # richtet Schaden an — belegt am 31.07.2026 am Wandautomaten mit Absperrband:
@@ -84,12 +87,6 @@ TEXT_REGEL_SZENE_POLIZEI = (
     "must be tiny, generic and blurred beyond legibility. Do not write any "
     "other words into the scene."
 )
-
-# GELOESCHT (Aufraeumen 01.08.2026): STIL_FIX und AUTOMAT_FIX — beide
-# existierten nur fuer den Automat-per-Text-Weg (Generator-Option „automat",
-# Kategorie-/Master-Presets). Der Automat entsteht seit dem 31.07.
-# ausschliesslich aus echten Fotos (Umfaerben/Komposit); die minutioes
-# gebaute AUTOMAT_FIX-Beschreibung steht in git log und im PROJEKTBUCH.
 
 # ---------------------------------------------------------------------------
 # PIXEL-WEG (seit 31.07.2026) — Bausteine fuer die Kette
@@ -178,10 +175,6 @@ BELEUCHTUNG: dict[str, tuple[str, str]] = {
         "security-camera timestamp aesthetic.",
     ),
 }
-
-# GELOESCHT (Aufraeumen 01.08.2026): ZUSTAND und UMFELD — die Auswahllisten
-# gehoerten zum Automat-per-Text-Weg (neu/intakt/gesprengt an Wand/Pfosten/
-# isoliert). Wortlaute in git log.
 
 # BLICKWINKEL — kein Fixblock, sondern PFLICHT-PARAMETER je Objektfoto.
 #
@@ -340,8 +333,6 @@ SUBJEKT: dict[str, tuple[str, str]] = {
         "on the asphalt, a lone street light still glowing, empty and eerie "
         "unsolved-case mood.",
     ),
-    # GELOESCHT (Aufraeumen 01.08.2026): regen, nebel — Wetter-Motive der
-    # gestrichenen Kategorie `wetter` (Beschluss 1). Wortlaute in git log.
 }
 
 
@@ -486,10 +477,9 @@ def build_anim_prompt(bewegung: str, atmosphaere: str = "") -> str:
 # broll_<kategorie>_NN.mp4, siehe contracts.BROLL_KATEGORIEN + script.ROLE_BROLL).
 # Jedes Preset = fertige Baustein-Kombination passend zur Szenen-Rolle im Clip.
 # ---------------------------------------------------------------------------
-# NUR noch die zwei Text->Video-Kategorien der Vier-Teile-Klammer.
-# GELOESCHT (Aufraeumen 01.08.2026): effekt/kulisse (Automat-per-Text —
-# verboten, Echtfoto-Weg), strasse (keine Rolle mehr; fluchtwagen laeuft
-# unter cctv), wetter (Beschluss 1, gestrichen).
+# NUR noch die zwei Text->Video-Kategorien der Vier-Teile-Klammer: `effekt`
+# und `kulisse` zeigen den Automaten (Echtfoto-Weg, kein Preset moeglich),
+# `strasse` hat keine Szenen-Rolle mehr — `fluchtwagen` laeuft unter cctv.
 KATEGORIE_PRESETS: dict[str, dict[str, str]] = {
     "blaulicht": {
         "label": "blaulicht — Teil 1: Hook (Polizei am Tatort)", "rolle": "hook",
@@ -516,9 +506,3 @@ def build_kategorie_prompt(kategorie: str) -> str:
     p = KATEGORIE_PRESETS[kategorie]
     return build_prompt(beleuchtung=p["beleuchtung"], subjekt=p["subjekt"],
                         kamerabewegung=p["bewegung"])
-
-
-# GELOESCHT (Aufraeumen 01.08.2026): MASTER_PRESETS, WORKFLOW_HINWEIS und
-# build_master_prompt() — der generierte Master-Weg ist ueberholt, der
-# Master entsteht aus einem echten Foto (BROLL_PLAN, 31.07.). Wortlaute
-# in git log.
