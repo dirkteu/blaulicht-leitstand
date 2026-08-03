@@ -24,7 +24,7 @@ import hashlib
 import random
 import re
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 from . import parse
 
@@ -96,30 +96,47 @@ ASSETS = {
     "effect":    [clip for satz in EFFEKT_SAETZE for clip in satz],
 }
 
-# Welche B-Roll-Kategorie passt zu welcher Szenen-Rolle.
+# ---------------------------------------------------------------------------
+# DER GRUNDAUFBAU — vier Bloecke, EINE Tabelle
+# ---------------------------------------------------------------------------
+# Bis 03.08.2026 liefen zwei Strukturen nebeneinander, die nicht zueinander
+# passten: fuenf Textrollen (hook/eskalation/story/zahlen/cliffhanger) und vier
+# Bildteile (die „Vier-Teile-Klammer"). Die Naht war sichtbar — der
+# Zahlen-Abschnitt hing an den Taeter-Bildern, obwohl er ueber Beute und
+# Schaden spricht.
 #
-# VIER-TEILE-KLAMMER (UEBERLEGUNG_DRAMATURGIE.md, umgesetzt 01.08.2026):
-# Teil 1 Polizei (hook) → Teil 2 die Tat/der Automat (eskalation) →
-# Teil 3 Taeter & Flucht (story + zahlen) → Teil 4 wieder der Automat
-# (cliffhanger, letztes Bild). Der Clip endet beim zerstoerten Automaten
-# unter „ungeloest", nicht beim wegfahrenden Auto.
-# `location` (intakter Automat) und `weather` haengen damit an keiner Rolle
-# mehr — das fehlende Foto des intakten Automaten blockiert nichts.
-# `cctv` traegt Teil 3 und ist laut BROLL_PLAN Beschluss 3 neu definiert
-# (Taeter-Silhouetten/Fluchtfahrzeug OHNE Automat) — Pool siehe CCTV_CLIPS.
-ROLE_BROLL = {
-    "hook":        "blaulicht",
-    "eskalation":  "effect",
-    "story":       "cctv",
-    "zahlen":      "cctv",
-    "cliffhanger": "effect",
-}
+# Jetzt gilt: ein Block = ein Gedanke = eine Bildsorte. Die REIHENFOLGE STEHT
+# FEST, und der Text wird auf die Bloecke verteilt — nicht umgekehrt. Genau das
+# macht einen Grundaufbau aus: der Zuschauer erkennt die Form wieder.
+#
+# Der Clip beginnt bewusst am ENDE der Geschichte — die Polizei kommt zuletzt,
+# c2 springt zurueck zur Tat. Das ist der uebliche True-Crime-Einstieg; die
+# Sprache muss den Sprung tragen, sonst wirkt er wie ein Fehler.
+#
+# `darf_fehlen`: Sagt eine Meldung nichts ueber die Taeter, gibt es kein c3.
+# Es wird kein Text erfunden, um eine Form zu fuellen.
+class Block(NamedTuple):
+    id: str            # c1 … c4, zugleich `role` in der Spec
+    erzaehlt: str      # was dieser Block sagt (Dokumentation)
+    bild: Optional[str]   # gewuenschte Bildsorte; None = kein Bild (Farbflaeche)
+    darf_fehlen: bool
+    sfx: str
 
-# Feste Szenen-Dauern (Summe ~ DURATION), wie im Prototyp
-SCENE_ORDER = ("hook", "eskalation", "story", "zahlen", "cliffhanger")
-SCENE_DURATIONS = {"hook": 3, "eskalation": 7, "story": 18, "zahlen": 8, "cliffhanger": 6}
-SCENE_SFX = {"hook": "boom", "eskalation": "sirene", "story": "herzschlag",
-             "zahlen": "herzschlag", "cliffhanger": "stille"}
+
+BLOECKE: tuple[Block, ...] = (
+    Block("c1", "Einstieg: staerkster Fakt, dann Ort und Zeit", "polizei",   False, "boom"),
+    Block("c2", "Die Tat",                                      "tatobjekt", True,  "sirene"),
+    Block("c3", "Die Taeter: Ankunft, Bewegung, Flucht",         "taeter",    True,  "herzschlag"),
+    # c4 traegt die Bilanz und braucht KEIN Material — damit ist es der einzige
+    # Block, in dem nie ein falsches Bild stehen kann. `_build_background()`
+    # faellt ohne Clip auf eine Farbflaeche zurueck; der gesuchte Zustand
+    # existiert also bereits.
+    Block("c4", "Bilanz: Zahlen, Fahndungsstand, Spur",          None,        False, "stille"),
+)
+
+# UEBERGANG bis Stufe 2: Bildsorte -> heutiger Pool. Verschwindet, sobald die
+# Szene ihre Bildanforderung stellt statt eines Dateinamens.
+_SORTE_POOL = {"polizei": "blaulicht", "tatobjekt": "effect", "taeter": "cctv"}
 
 # Zielabstand zwischen zwei Schnitten. Die Bildanzahl je Abschnitt wird daraus
 # berechnet, statt in einer Tabelle zu stehen.
@@ -131,9 +148,6 @@ SCENE_SFX = {"hook": "boom", "eskalation": "sirene", "story": "herzschlag",
 # einem einzigen Standbild stand.
 SEK_PRO_BILD = 5.0
 MAX_BILDER = 4
-# Der Schluss traegt die Klammer und soll ruhig sein — aber nicht erstarren.
-# Zwei bis drei Einstellungen desselben Motivs (Nutzer-Entscheid 03.08.2026).
-CLIFFHANGER_BILDER = (2, 3)
 
 
 def _sekunden(text: str) -> float:
@@ -142,31 +156,26 @@ def _sekunden(text: str) -> float:
     return len(text or "") / ZEICHEN_PRO_SEKUNDE + 0.35   # + Atempause, s. tts.GAP
 
 
-def _bildanzahl(rolle: str, sekunden: float) -> int:
-    """Wie viele verschiedene Bilder ein Abschnitt zeigt."""
-    n = max(1, round(sekunden / SEK_PRO_BILD))
-    if rolle == "cliffhanger":
-        lo, hi = CLIFFHANGER_BILDER
-        return max(lo, min(hi, n))
-    return min(MAX_BILDER, n)
+def _bildanzahl(sekunden: float) -> int:
+    """Wie viele verschiedene Bilder ein Block zeigt."""
+    return min(MAX_BILDER, max(1, round(sekunden / SEK_PRO_BILD)))
 
 
-# WELCHE BILDSORTE ZU WELCHEM SATZ — nach Inhalt, nicht nach Abschnittsnamen.
+# WELCHER SATZ IN WELCHEN BLOCK — die Sortierung passiert im TEXT.
 #
-# Bis 03.08.2026 hing die Bildsorte allein am Rollennamen (ROLE_BROLL). Das war
-# auf die alte Satzverteilung kalibriert; seit die Saetze einen Abschnitt nach
-# vorn rutschen, kippte die Zuordnung ins GEGENTEIL. Belegt am Fall Glinde:
-# „…auf Fahrraedern die Flucht ergriffen" lief ueber Bildern des zerstoerten
-# Automaten, waehrend „Der Geldautomat wurde vollstaendig zerstoert" Fluchtwagen
-# und Flucht-Roller zeigte.
+# Kurz existierte die umgekehrte Loesung: Die Bloecke lagen fest und das BILD
+# richtete sich nach dem Satz. Das war ein Zwischenschritt. Jetzt liegt die
+# Bildsorte am Block fest (siehe BLOECKE) und die SAETZE werden einsortiert —
+# das ist die Reihenfolge, die ein Grundaufbau braucht.
 #
-# `hook` und `cliffhanger` bleiben fest verdrahtet: Sie tragen die Klammer
-# (Polizei am Anfang, Tatobjekt als letztes Bild) und sollen sich nicht nach
-# dem Wortlaut richten.
+# Vorgeschichte, damit niemand zurueckbaut: Vorher hing die Bildsorte am
+# Rollennamen. Als die Saetze einen Abschnitt nach vorn rutschten, kippte die
+# Zuordnung ins GEGENTEIL — am Fall Glinde lief „…auf Fahrraedern die Flucht
+# ergriffen" ueber Bildern des zerstoerten Automaten, waehrend „Der Geldautomat
+# wurde vollstaendig zerstoert" Fluchtwagen und Flucht-Roller zeigte.
 #
-# Die Muster stehen hier und nicht in core.parse, weil sie auf die
-# B-Roll-Kategorien abbilden — das ist die Zustaendigkeit dieses Moduls. In
-# parse.py wohnen nur die Regeln, die sich core.lektor mit uns teilt.
+# Die Muster stehen hier und nicht in core.parse: dort wohnen nur die Regeln,
+# die sich core.lektor mit uns teilt.
 _FLUCHT_RE = re.compile(
     r"\bflucht\w*|\bfl[üu]cht\w*|\bfloh(?:en)?\b|\bentkam\w*"
     r"|\bfahrrad\w*|\brad\b|\broller\b|\bmoped\b|\bfahrzeug\w*|\bauto\b|\bpkw\b"
@@ -181,18 +190,20 @@ _OBJEKT_RE = re.compile(
 )
 
 
-def _bild_kategorie(rolle: str, text: str) -> str:
-    """Bildsorte eines Abschnitts — aus dem Inhalt, wo es sinnvoll ist."""
-    fest = ROLE_BROLL.get(rolle, "street")
-    if rolle not in ("eskalation", "story"):
-        return fest
-    flucht = len(_FLUCHT_RE.findall(text or ""))
-    objekt = len(_OBJEKT_RE.findall(text or ""))
-    if flucht > objekt:
-        return "cctv"
-    if objekt > flucht:
-        return "effect"
-    return fest   # Gleichstand: bei der bisherigen Zuordnung bleiben
+def _sortiere_saetze(saetze: list[str]) -> tuple[list[str], list[str]]:
+    """Fakten-Saetze auf c2 (die Tat) und c3 (die Taeter) verteilen.
+
+    Rueckgabe: (Saetze fuer c2, Saetze fuer c3). Bei Gleichstand entscheidet
+    c2 — die Tat ist der Kern der Meldung, die Taeter sind die Ergaenzung.
+    """
+    tat: list[str] = []
+    taeter: list[str] = []
+    for s in saetze:
+        if len(_FLUCHT_RE.findall(s)) > len(_OBJEKT_RE.findall(s)):
+            taeter.append(s)
+        else:
+            tat.append(s)
+    return tat, taeter
 
 # ZIEL-LAENGEN je Abschnitt. Die Dauer laesst sich nicht direkt stellen:
 # `tts.synth()` misst den gesprochenen Text und schreibt die Zeiten zurueck.
@@ -204,7 +215,7 @@ def _bild_kategorie(rolle: str, text: str) -> str:
 # Fuerth auf 20,3 s (zwei sehr lange Saetze), waehrend sie bei Fachbach mit
 # drei kurzen bei 9 s lag.
 ZEICHEN_PRO_SEKUNDE = 13.2   # gemessen an den 5 vertonten Faellen, 03.08.2026
-BUDGET_SEK = {"hook": 8, "eskalation": 8, "story": 12, "cliffhanger": 11}
+BUDGET_SEK = {"c1": 8, "c2": 10, "c3": 10, "c4": 11}
 
 
 def _budget(rolle: str) -> int:
@@ -308,16 +319,6 @@ def _taeter(ungeloest: bool) -> str:
     return "die unbekannten Täter" if ungeloest else "die mutmaßlichen Täter"
 
 
-def _line_eskalation(tat: str, first_sentence: str) -> str:
-    if first_sentence:
-        return first_sentence.rstrip(".") + "."
-    # Ohne .lower(): `tat` ist ein Substantiv („Automaten-Sprengung") und wird
-    # im Deutschen grossgeschrieben. Der Notnagel griff frueher selten; seit die
-    # Saetze einen Abschnitt nach vorn rutschen, faellt „sprengung sorgt fuer
-    # einen Grosseinsatz" oefter an.
-    return f"Die Lage eskaliert schnell — {(tat or 'der Vorfall').strip()} sorgt für einen Großeinsatz."
-
-
 def _werkzeug_satz(werkzeug: Optional[str], ungeloest: bool,
                    distanz_vorhanden: bool = False) -> str:
     """Der Werkzeug-Satz, mit dem die Story oeffnet.
@@ -345,17 +346,27 @@ def _werkzeug_satz(werkzeug: Optional[str], ungeloest: bool,
     return f"Mit {werkzeug} sollen {_taeter(ungeloest)} vorgegangen sein."
 
 
-def _line_story(werkzeug_satz: str, rest_sentences: str) -> str:
-    """Werkzeug-Satz + die Fakten-Saetze, die ins Story-Budget passen.
+def _line_tat(werkzeug_satz: str, saetze: str) -> str:
+    """c2 — die Tat: Werkzeug-Satz plus die Fakten-Saetze ueber das Tatobjekt.
 
-    Der Notnagel lautete bis 03.08.2026 „Die Polizei ermittelt die Hintergruende
-    der {tat}." — das ergab mit einem nominativen `tat` kaputte Grammatik („der
-    Versuchter Aufbruch eines Zigarettenautomaten") und wiederholte zudem das
-    Thema des Schlusses. Jetzt greift er nur noch, wenn WEDER Werkzeug NOCH ein
-    Fakten-Satz da ist, und nennt kein Genitiv-Objekt mehr.
+    Gibt "" zurueck, wenn nichts vorliegt. c2 `darf_fehlen`, deshalb wird hier
+    NICHTS erfunden: Bis 03.08.2026 stand an dieser Stelle der Notnagel „Die
+    Polizei ermittelt die Hintergruende der {tat}." — mit nominativem `tat`
+    kaputte Grammatik („der Versuchter Aufbruch eines Zigarettenautomaten") und
+    inhaltlich eine Dopplung zur Bilanz in c4.
     """
-    teile = [t for t in (werkzeug_satz.strip(), (rest_sentences or "").strip()) if t]
-    return " ".join(teile) if teile else "Die Polizei ermittelt die Hintergründe."
+    teile = [t for t in (werkzeug_satz.strip(), (saetze or "").strip()) if t]
+    return " ".join(teile)
+
+
+def _line_taeter(saetze: str) -> str:
+    """c3 — die Taeter: Ankunft, Bewegung, Flucht.
+
+    Gibt "" zurueck, wenn die Meldung nichts ueber die Taeter hergibt. Der Block
+    faellt dann weg (`darf_fehlen`), statt mit einer Leerformel gefuellt zu
+    werden.
+    """
+    return (saetze or "").strip()
 
 
 def _eur(n: int) -> str:
@@ -392,30 +403,47 @@ def _line_zahlen(beute: Optional[int], schaden: Optional[int]) -> str:
 _distanz_fehlt = parse.distanz_fehlt
 
 
-def _line_cliffhanger(ungeloest: bool, fahndung: str = "") -> str:
-    """Schluss: erst der Fahndungsstand, dann die Spur.
+def _line_bilanz(beute: Optional[int], schaden: Optional[int],
+                 ungeloest: bool, fahndung: str = "") -> str:
+    """c4 — die Bilanz: Zahlen, Fahndungsstand, Spur.
 
-    `fahndung` kommt aus `parse.trenne_fahndung()` und stand bis zum 03.08.2026
-    mitten in der Story. Hier gehoert er hin — „Die Fahndung verlief erfolglos"
-    und „von den Taetern fehlt jede Spur" sind dieselbe Aussage. Der Schluss
-    wird dadurch von selbst laenger, die Story kuerzer.
+    Loest den frueheren `zahlen`-Abschnitt aus der Mitte ab. Zahlen sind eine
+    Bilanz, kein Mittelteil: Standen sie in der Mitte, unterbrachen sie die
+    Erzaehlung — und danach musste sie neu anlaufen, nur um zu enden.
+
+    `_line_zahlen()` wird NUR aufgerufen, wenn mindestens ein Wert vorliegt.
+    Damit verschwindet die leere Beute/Schaden-Tafel: Bis 03.08.2026 stand die
+    Bauchbinde „Beute vs. Schaden" ueber einer leeren Karte, waehrend der
+    Sprecher „Die genaue Schadenshoehe ist noch unklar" sagte.
+
+    `fahndung` kommt aus `parse.trenne_fahndung()` und stand vorher mitten in
+    der Story — „Die Fahndung verlief erfolglos" und „von den Taetern fehlt
+    jede Spur" sind dieselbe Aussage.
     """
-    schluss = ("Von den unbekannten Tätern fehlt bis heute jede Spur — die Polizei bittet um Hinweise."
-               if ungeloest else "Die Ermittlungen laufen — der Fall ist noch nicht abgeschlossen.")
+    teile: list[str] = []
+    if beute is not None or schaden is not None:
+        teile.append(_line_zahlen(beute, schaden))
     f = (fahndung or "").strip()
-    return f"{f.rstrip('.')}. {schluss}" if f else schluss
+    if f:
+        teile.append(f.rstrip(".") + ".")
+    teile.append(
+        "Von den unbekannten Tätern fehlt bis heute jede Spur — die Polizei bittet um Hinweise."
+        if ungeloest else "Die Ermittlungen laufen — der Fall ist noch nicht abgeschlossen.")
+    return " ".join(teile)
 
 
-def _caption(role: str, zeit: Optional[str], ungeloest: bool, tat: str) -> str:
-    if role == "hook":
+def _caption(block_id: str, zeit: Optional[str], ungeloest: bool, tat: str,
+             hat_zahlen: bool) -> str:
+    if block_id == "c1":
         return f"{zeit} Uhr" if zeit else "Mitten in der Nacht"
-    if role == "eskalation":
-        return "Großeinsatz"
-    if role == "story":
+    if block_id == "c2":
         return (tat or "Tatgeschehen")[:40]
-    if role == "zahlen":
-        return "Beute vs. Schaden"
-    if role == "cliffhanger":
+    if block_id == "c3":
+        return "Täter auf der Flucht" if ungeloest else "Die Tatverdächtigen"
+    if block_id == "c4":
+        # Nur „Beute vs. Schaden" versprechen, wenn es auch Zahlen gibt.
+        if hat_zahlen:
+            return "Beute vs. Schaden"
         return "Spur: keine" if ungeloest else "Ermittlungen laufen"
     return ""
 
@@ -447,47 +475,42 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     # Werkzeug-Satz seine eigene Distanzierung nicht zu wiederholen.
     distanz_in_details = not _distanz_fehlt(details)
 
-    # DETAILS AUF DIE ABSCHNITTE VERTEILEN — bewusst an EINER Stelle, damit
-    # nachvollziehbar bleibt, welcher Satz wo landet, und jeder Abschnitt sein
+    # DEN TEXT AUF DIE BLOECKE VERTEILEN — bewusst an EINER Stelle, damit
+    # nachvollziehbar bleibt, welcher Satz wo landet, und jeder Block sein
     # Zeichen-Budget kennt (siehe BUDGET_SEK).
     #
-    # Bis 03.08.2026: hook bekam gar keinen Satz (nur Ort/Zeit als Etikett),
-    # eskalation den ersten, story ALLE uebrigen. Ergebnis am Fall Glinde:
-    # hook 4,6 s, story 18,5 s.
-    #
-    # Der Hook nimmt den ersten Satz nur, wenn er nicht ausufert — sonst traegt
-    # der gebaute Kurz-Einstieg und der Satz bleibt fuer die eskalation liegen.
-    # Ohne diese Bremse lief der Hook bei Gorxheimertal auf 11,6 s.
-    hook_satz = ""
-    if saetze and len(saetze[0]) <= _budget("hook") * 1.3:
-        hook_satz, saetze = saetze[0], saetze[1:]
+    # c1 nimmt den ersten Satz nur, wenn er nicht ausufert — sonst traegt der
+    # gebaute Kurz-Einstieg, und der Satz bleibt fuer c2/c3 liegen. Ohne diese
+    # Bremse lief der Einstieg bei Gorxheimertal auf 11,6 s.
+    c1_satz = ""
+    if saetze and len(saetze[0]) <= _budget("c1") * 1.3:
+        c1_satz, saetze = saetze[0], saetze[1:]
 
-    eskalations_satz, saetze = _fuellen(saetze, _budget("eskalation"))
+    # Die uebrigen Saetze nach Inhalt auf c2 (die Tat) und c3 (die Taeter)
+    # verteilen. Die Bloecke liegen fest, die SAETZE werden einsortiert.
+    tat_saetze, taeter_saetze = _sortiere_saetze(saetze)
 
-    # Der Werkzeug-Satz gehoert zur Story und zaehlt gegen ihr Budget.
+    # Der Werkzeug-Satz gehoert zu c2 und zaehlt gegen dessen Budget.
     werkzeug_satz = _werkzeug_satz(werkzeug, ungeloest, distanz_in_details)
-    story_saetze, saetze = _fuellen(saetze, max(0, _budget("story") - len(werkzeug_satz)))
-    # Was danach uebrig bleibt, faellt weg. Straffen ist erlaubt — dieselbe
+    c2_saetze, _ = _fuellen(tat_saetze, max(0, _budget("c2") - len(werkzeug_satz)))
+    c3_saetze, _ = _fuellen(taeter_saetze, _budget("c3"))
+    # Was nicht ins Budget passt, faellt weg. Straffen ist erlaubt — dieselbe
     # Regel, nach der auch der Lektor arbeitet („Nebensaechliches darf ganz
     # wegfallen"). Die Kernfakten stecken in Ort, Zeit, Tat, Beute und Schaden
     # und werden separat gesetzt, nicht aus `details` gezogen.
 
+    hat_zahlen = beute is not None or schaden is not None
     lines = {
-        "hook": _line_hook(ort, zeit, tat, hook_satz, schaden),
-        "eskalation": _line_eskalation(tat, eskalations_satz),
-        "story": _line_story(werkzeug_satz, story_saetze),
-        "zahlen": _line_zahlen(beute, schaden),
-        "cliffhanger": _line_cliffhanger(ungeloest, fahndung),
+        "c1": _line_hook(ort, zeit, tat, c1_satz, schaden),
+        "c2": _line_tat(werkzeug_satz, c2_saetze),
+        "c3": _line_taeter(c3_saetze),
+        "c4": _line_bilanz(beute, schaden, ungeloest, fahndung),
     }
 
-    # WELCHE ABSCHNITTE DIESER FALL HAT — die Form richtet sich nach dem, was
-    # bekannt ist, statt jedem Fall dieselben fuenf aufzuzwingen.
-    # Ohne Beute UND ohne Schaden gibt es nichts zu zeigen: bis 03.08.2026 stand
-    # dort trotzdem die Bauchbinde „Beute vs. Schaden" ueber einer leeren Tafel,
-    # waehrend der Sprecher „Die genaue Schadenshoehe ist noch unklar" sagte —
-    # vier Sekunden fuer eine Nicht-Aussage.
-    rollen = tuple(r for r in SCENE_ORDER
-                   if r != "zahlen" or beute is not None or schaden is not None)
+    # WELCHE BLOECKE DIESER FALL HAT. Ein Block, der nichts zu sagen hat und
+    # fehlen darf, faellt weg — es wird kein Text erfunden, um eine Form zu
+    # fuellen. c1 und c4 entstehen immer aus den Fakten und fehlen nie.
+    bloecke = tuple(b for b in BLOECKE if lines[b.id] or not b.darf_fehlen)
 
     # GUARDRAIL Unschuldsvermutung — greift NUR, wenn jemand identifiziert ist.
     # Bei unbekannten/fluechtigen Taetern (ungeloest=True) gibt es keine Person,
@@ -499,52 +522,55 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     # „sollen" in der Werkzeug-Zeile eine Schuldbehauptung in der Eskalations-
     # Zeile verdeckt („Der Festgenommene sprengte den Automaten.").
     #
-    # SEIT 03.08.2026 UEBER ALLE ABSCHNITTE, nicht mehr nur ueber eskalation und
-    # story: Die Fakten-Saetze wandern jetzt zwischen den Abschnitten (der erste
-    # traegt den Hook, der Fahndungssatz den Schluss). Damit kann eine
-    # Schuldbehauptung an Stellen landen, die frueher nie geprueft wurden —
-    # genau dort waere sie unbemerkt durchgerutscht.
+    # SEIT 03.08.2026 UEBER ALLE BLOECKE, nicht mehr nur ueber zwei von fuenf:
+    # Die Fakten-Saetze wandern zwischen den Bloecken (der erste traegt c1, der
+    # Fahndungssatz c4). Damit kann eine Schuldbehauptung an Stellen landen, die
+    # frueher nie geprueft wurden — genau dort waere sie unbemerkt durchgerutscht.
     if not ungeloest:
         zusatz = (f"Nach bisherigen Erkenntnissen sollen {_taeter(ungeloest)} "
                   f"für die Tat verantwortlich sein.")
-        for rolle in rollen:
-            if _distanz_fehlt(lines[rolle]):
-                lines[rolle] = f"{zusatz} {lines[rolle]}".strip()
-                break   # einmal reicht — der Hinweis gilt fuer den ganzen Block
+        for b in bloecke:
+            if _distanz_fehlt(lines[b.id]):
+                lines[b.id] = f"{zusatz} {lines[b.id]}".strip()
+                break   # einmal reicht — der Hinweis gilt fuer den ganzen Clip
 
     # Deterministischer B-Roll-Seed (Titel + Quelle, damit derselbe Fall stabil bleibt)
     seed_src = f"{case.get('title', '')}|{facts.get('quelle_link') or case.get('link', '')}"
     seed = int(hashlib.md5(seed_src.encode("utf-8")).hexdigest(), 16) % 997
 
-    # Bildplan je Abschnitt: Sorte aus dem Inhalt, Anzahl aus der geschaetzten
-    # Sprechdauer. Beides haengt am Text und wird deshalb hier bestimmt.
-    plan = [(r, _bild_kategorie(r, lines[r]), _bildanzahl(r, _sekunden(lines[r])))
-            for r in rollen]
+    # Bildplan: Sorte kommt vom Block, Anzahl aus der geschaetzten Sprechdauer.
+    # c4 hat keine Bildsorte und taucht deshalb gar nicht erst auf.
+    plan = [(b.id, _SORTE_POOL[b.bild], _bildanzahl(_sekunden(lines[b.id])))
+            for b in bloecke if b.bild]
     zuteilung = broll_zuteilung(seed, plan)
 
     scenes: list[dict[str, Any]] = []
-    t = 0
-    for role in rollen:
-        d = SCENE_DURATIONS[role]
+    t = 0.0
+    for b in bloecke:
+        # Richtwert; `tts.synth()` misst den gesprochenen Text und ueberschreibt
+        # t_start/t_end und `duration`. Frueher standen hier feste Soll-Dauern,
+        # die mit der echten Laenge nichts zu tun hatten.
+        d = round(_sekunden(lines[b.id]), 2)
+
         # Nur noch Fortschrittsbalken + Beute/Schaden-Tafel. Timer, Karte,
-        # Warnbalken und Tatzeit-Label sind raus (Nutzer-Entscheid
-        # 01.08.2026, siehe core/render.py) — render ignoriert die alten
-        # Tags in Bestands-Specs einfach.
+        # Warnbalken und Tatzeit-Label sind raus (Nutzer-Entscheid 01.08.2026,
+        # siehe core/render.py) — render ignoriert die alten Tags in
+        # Bestands-Specs einfach.
         overlay = ["progress"]
-        if role == "zahlen":
+        if b.id == "c4" and hat_zahlen:
             overlay.append("daten:beute_schaden")
 
         scenes.append({
-            "t_start": t, "t_end": t + d, "role": role,
-            "vo": lines[role],
-            "caption": _caption(role, zeit, ungeloest, tat),
-            "broll": zuteilung[role],
+            "t_start": round(t, 2), "t_end": round(t + d, 2), "role": b.id,
+            "vo": lines[b.id],
+            "caption": _caption(b.id, zeit, ungeloest, tat, hat_zahlen),
+            "broll": zuteilung.get(b.id, []),
             "overlay": overlay,
-            "sfx": SCENE_SFX[role],
+            "sfx": b.sfx,
         })
         t += d
 
-    voiceover = " ".join(lines[r] for r in rollen)
+    voiceover = " ".join(lines[b.id] for b in bloecke)
 
     hashtags = ["#truecrime", "#deutschland", "#blaulicht", "#krimi", "#polizei", "#nachrichten"]
     tat_tag = re.sub(r"[^a-z0-9]+", "", tat.lower())[:20]
@@ -560,7 +586,10 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     return {
         "generated": datetime.now().isoformat(timespec="seconds"),
         "channel": CHANNEL,
-        "duration": t,
+        # Aus dem letzten t_end statt aus der aufsummierten Gleitkommazahl —
+        # sonst laufen beide um Bruchteile auseinander. `tts.synth()`
+        # ueberschreibt den Wert ohnehin mit der gemessenen Laenge.
+        "duration": scenes[-1]["t_end"] if scenes else 0.0,
         "case": {
             "id": case.get("id"),
             "title": case.get("title", ""),
@@ -570,7 +599,7 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
         },
         "facts": facts,
         "meta": {
-            "hook_line": lines["hook"],
+            "hook_line": lines["c1"],
             "title_options": title_options,
             "caption": f"{ort}: {tat}. Was ist da los? 👇\n\n{DISCLAIMER}",
             "disclaimer": DISCLAIMER,

@@ -50,8 +50,16 @@ FRAMES_PER_SEC = 3          # gezeichnete Overlay-Frames/Sek.
 DEBUG_LABEL = False          # B-Roll-Dateiname einblenden (nur zum Debuggen)
 POLISH = True                # Cinematic-Feinschliff: Grade, Korn, Vignette, Shake, Flash
 
-# Farb-Kulisse je Rolle (Platzhalter, wenn kein B-Roll vorliegt)
+# Farb-Kulisse je Block (auch Platzhalter, wenn kein B-Roll vorliegt).
+#
+# c4 (Bilanz) hat KEINE Bildsorte — die Farbflaeche ist dort kein Notbehelf,
+# sondern der gewollte Zustand: der einzige Block, in dem nie ein falsches Bild
+# stehen kann. Deshalb ein bewusst gesetztes, ruhiges Dunkel.
+#
+# Die alten Rollennamen bleiben stehen, damit Bestands-Specs (fuenf Szenen,
+# hook/eskalation/story/zahlen/cliffhanger) unveraendert weiterrendern.
 ROLE_TINT = {
+    "c1": (13, 21, 38), "c2": (26, 15, 12), "c3": (14, 19, 16), "c4": (10, 11, 15),
     "hook": (13, 21, 38), "eskalation": (26, 15, 12), "story": (14, 19, 16),
     "zahlen": (16, 16, 18), "cliffhanger": (11, 13, 20),
 }
@@ -178,6 +186,27 @@ def _draw_beute_schaden(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
     d.text((cx, y + box_h + 30), "vs.", font=F_LABEL, fill=(200, 200, 205, 255), anchor="mm")
 
 
+def _draw_bilanz_kopf(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
+    """Kopf der Bilanz (Block c4): Tat, darunter Ort und Uhrzeit.
+
+    c4 zeigt kein B-Roll. Ohne diesen Kopf waere der Schluss eine leere dunkle
+    Flaeche — mit ihm ist er eine Zusammenfassung, und das ist der Zweck des
+    Blocks. Ort bleibt auf Stadt-/Gemeindeebene (CLAUDE.md, Datenschutz); es
+    wird nur wiedergegeben, was ohnehin schon gesprochen wird.
+    """
+    facts = facts or {}
+    tat = (facts.get("tat") or "").strip()
+    ort = (facts.get("ort") or "").strip()
+    zeit = (facts.get("zeit") or "").strip()
+
+    cx = W // 2
+    if tat:
+        d.text((cx, 250), tat[:38], font=F_ZAHL, fill=(238, 238, 241, 255), anchor="mm")
+    zeile = " · ".join(t for t in (ort, f"{zeit} Uhr" if zeit else "") if t)
+    if zeile:
+        d.text((cx, 320), zeile, font=F_LABEL, fill=(178, 178, 186, 255), anchor="mm")
+
+
 # ---------------------------------------------------------------------------
 # 1) HINTERGRUND je Szene (B-Roll oder Platzhalter) -> ein Video
 # ---------------------------------------------------------------------------
@@ -248,6 +277,8 @@ def _draw_overlay(spec: dict[str, Any], facts: dict[str, Any], t: float, frac: f
         d.text((56, 132), b if isinstance(b, str) else " + ".join(b),
                font=F_SMALL, fill=(200, 200, 205, 220))
 
+    if s.get("role") == "c4":
+        _draw_bilanz_kopf(d, facts)
     if s.get("role") == "zahlen" or _wants(s, "daten:beute_schaden"):
         _draw_beute_schaden(d, facts)
 
