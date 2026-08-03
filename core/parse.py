@@ -254,6 +254,47 @@ def entschaerfe_methode(text: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# FAHNDUNGSSAETZE — gehoeren ans Ende des Clips, nicht in die Tat-Schilderung
+# ---------------------------------------------------------------------------
+# Saetze ueber Fahndung und Ermittlungsstand blaehen den laengsten Abschnitt auf
+# (`story` lief dadurch 18,5 s) und bremsen die Erzaehlung genau dort, wo sie
+# laufen soll. Inhaltlich gehoeren sie zum Schluss: „Fahndung erfolglos" und
+# „von den Taetern fehlt jede Spur" sind dieselbe Aussage.
+#
+# BEWUSST NICHT im Muster: „fluechtig"/„floh"/„Flucht". Die Flucht IST das
+# Tatgeschehen und muss in der Erzaehlung bleiben — nimmt man sie mit heraus,
+# bleibt von der Story nichts uebrig.
+_FAHNDUNG_RE = re.compile(
+    r"\bfahndung\w*|\bermittl\w+|\bhubschrauber\w*|\bsp[üu]rhund\w*"
+    r"|\bzeugen\s+(?:werden\s+)?gesucht|\bsachdienlich\w*"
+    r"|\bhinweise?\s+(?:nimmt|an\s+die|erbeten)"
+    r"|\bkriminalpolizei\b|\bkripo\b|\bpolizei\s+sucht\b",
+    re.I,
+)
+
+
+def trenne_fahndung(text: str) -> tuple[str, str]:
+    """Text in (Tathergang, Fahndung) zerlegen.
+
+    Rueckgabe ist immer ein Paar; der zweite Teil ist "" wenn nichts passt.
+
+    SICHERHEITSNETZ: Wuerde der Tathergang dabei komplett leer werden (alle
+    Saetze sind Fahndungssaetze, typisch bei duennen Meldungen), bleibt der Text
+    unveraendert und der zweite Teil leer. Lieber eine etwas laengere Story als
+    eine leere.
+    """
+    t = (text or "").strip()
+    if not t:
+        return "", ""
+    saetze = [s.strip() for s in _SATZ_SPLIT_RE.split(t) if s.strip()]
+    rest = [s for s in saetze if not _FAHNDUNG_RE.search(s)]
+    fahndung = [s for s in saetze if _FAHNDUNG_RE.search(s)]
+    if not rest or not fahndung:
+        return t, ""
+    return " ".join(rest), " ".join(fahndung)
+
+
+# ---------------------------------------------------------------------------
 # UNSCHULDSVERMUTUNG — journalistische Distanz im erzaehlenden Text
 # ---------------------------------------------------------------------------
 # NUR echte Distanzierungen zur SCHULD zaehlen. Bewusst NICHT dabei:

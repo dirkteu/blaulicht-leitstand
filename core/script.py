@@ -121,15 +121,115 @@ SCENE_DURATIONS = {"hook": 3, "eskalation": 7, "story": 18, "zahlen": 8, "cliffh
 SCENE_SFX = {"hook": "boom", "eskalation": "sirene", "story": "herzschlag",
              "zahlen": "herzschlag", "cliffhanger": "stille"}
 
-# Wie viele verschiedene Clips eine Szene zeigt (Richtwert: Szenendauer /
-# ~5-s-Cliplaenge). Vorher lief EIN Clip ueber die ganze Szene geloopt — in
-# der 18-s-Story sah man dieselben fuenf Sekunden 3,6-mal hintereinander.
-# cliffhanger bleibt bewusst bei 1: Das Schlussbild (der Automat) soll
-# stehen, nicht schneiden.
-SCENE_CLIPS = {"hook": 1, "eskalation": 2, "story": 4, "zahlen": 2, "cliffhanger": 1}
+# Zielabstand zwischen zwei Schnitten. Die Bildanzahl je Abschnitt wird daraus
+# berechnet, statt in einer Tabelle zu stehen.
+#
+# Vorher war es eine feste Tabelle (hook 1, eskalation 2, story 4, zahlen 2,
+# cliffhanger 1), kalibriert auf die alten Soll-Dauern. Seit die Abschnitte ihre
+# Laenge aus dem gesprochenen Text ziehen, passte sie nicht mehr: Am Fall Glinde
+# schnitt die 5,5-s-Story viermal (1,4 s je Bild), waehrend der 13-s-Schluss auf
+# einem einzigen Standbild stand.
+SEK_PRO_BILD = 5.0
+MAX_BILDER = 4
+# Der Schluss traegt die Klammer und soll ruhig sein — aber nicht erstarren.
+# Zwei bis drei Einstellungen desselben Motivs (Nutzer-Entscheid 03.08.2026).
+CLIFFHANGER_BILDER = (2, 3)
 
 
-def broll_zuteilung(seed: int) -> dict[str, list[str]]:
+def _sekunden(text: str) -> float:
+    """Grobe Sprechdauer eines Textes. Die echte misst spaeter `tts.synth()`;
+    hier reicht die Schaetzung, weil nur die Bildanzahl daran haengt."""
+    return len(text or "") / ZEICHEN_PRO_SEKUNDE + 0.35   # + Atempause, s. tts.GAP
+
+
+def _bildanzahl(rolle: str, sekunden: float) -> int:
+    """Wie viele verschiedene Bilder ein Abschnitt zeigt."""
+    n = max(1, round(sekunden / SEK_PRO_BILD))
+    if rolle == "cliffhanger":
+        lo, hi = CLIFFHANGER_BILDER
+        return max(lo, min(hi, n))
+    return min(MAX_BILDER, n)
+
+
+# WELCHE BILDSORTE ZU WELCHEM SATZ — nach Inhalt, nicht nach Abschnittsnamen.
+#
+# Bis 03.08.2026 hing die Bildsorte allein am Rollennamen (ROLE_BROLL). Das war
+# auf die alte Satzverteilung kalibriert; seit die Saetze einen Abschnitt nach
+# vorn rutschen, kippte die Zuordnung ins GEGENTEIL. Belegt am Fall Glinde:
+# „…auf Fahrraedern die Flucht ergriffen" lief ueber Bildern des zerstoerten
+# Automaten, waehrend „Der Geldautomat wurde vollstaendig zerstoert" Fluchtwagen
+# und Flucht-Roller zeigte.
+#
+# `hook` und `cliffhanger` bleiben fest verdrahtet: Sie tragen die Klammer
+# (Polizei am Anfang, Tatobjekt als letztes Bild) und sollen sich nicht nach
+# dem Wortlaut richten.
+#
+# Die Muster stehen hier und nicht in core.parse, weil sie auf die
+# B-Roll-Kategorien abbilden — das ist die Zustaendigkeit dieses Moduls. In
+# parse.py wohnen nur die Regeln, die sich core.lektor mit uns teilt.
+_FLUCHT_RE = re.compile(
+    r"\bflucht\w*|\bfl[üu]cht\w*|\bfloh(?:en)?\b|\bentkam\w*"
+    r"|\bfahrrad\w*|\brad\b|\broller\b|\bmoped\b|\bfahrzeug\w*|\bauto\b|\bpkw\b"
+    r"|\bt[äa]ter\w*|\bm[äa]nner\b|\bpersonen\b|\bunbekannte\w*|\bzeugen\b",
+    re.I,
+)
+_OBJEKT_RE = re.compile(
+    r"\bautomat\w*|\bgespreng\w*|\bsprengung\w*|\bzerst[öo]r\w*|\bbesch[äa]dig\w*"
+    r"|\bschaden\w*|\bgeb[äa]ude\w*|\bwohnhaus\w*|\bfiliale\w*|\bexplosion\w*"
+    r"|\btr[üu]mmer\w*|\baufgebroch\w*|\bkassette\w*",
+    re.I,
+)
+
+
+def _bild_kategorie(rolle: str, text: str) -> str:
+    """Bildsorte eines Abschnitts — aus dem Inhalt, wo es sinnvoll ist."""
+    fest = ROLE_BROLL.get(rolle, "street")
+    if rolle not in ("eskalation", "story"):
+        return fest
+    flucht = len(_FLUCHT_RE.findall(text or ""))
+    objekt = len(_OBJEKT_RE.findall(text or ""))
+    if flucht > objekt:
+        return "cctv"
+    if objekt > flucht:
+        return "effect"
+    return fest   # Gleichstand: bei der bisherigen Zuordnung bleiben
+
+# ZIEL-LAENGEN je Abschnitt. Die Dauer laesst sich nicht direkt stellen:
+# `tts.synth()` misst den gesprochenen Text und schreibt die Zeiten zurueck.
+# Kuerzer wird ein Abschnitt also nur, indem er weniger zu sagen bekommt.
+#
+# Gezaehlt wird in ZEICHEN, nicht in Saetzen. Ein Deckel auf die Satzzahl
+# reicht nicht: deutsche Polizeimeldungen haben Saetze von 40 bis 200 Zeichen.
+# Belegt am 03.08.2026 — mit „hoechstens zwei Saetze" wuchs die Story beim Fall
+# Fuerth auf 20,3 s (zwei sehr lange Saetze), waehrend sie bei Fachbach mit
+# drei kurzen bei 9 s lag.
+ZEICHEN_PRO_SEKUNDE = 13.2   # gemessen an den 5 vertonten Faellen, 03.08.2026
+BUDGET_SEK = {"hook": 8, "eskalation": 8, "story": 12, "cliffhanger": 11}
+
+
+def _budget(rolle: str) -> int:
+    """Zeichen-Budget eines Abschnitts."""
+    return int(BUDGET_SEK[rolle] * ZEICHEN_PRO_SEKUNDE)
+
+
+def _fuellen(saetze: list[str], budget: int) -> tuple[str, list[str]]:
+    """Saetze bis zum Budget entnehmen; gibt (Text, uebrige Saetze) zurueck.
+
+    Der ERSTE Satz wird immer genommen, auch wenn er das Budget sprengt: Saetze
+    lassen sich nicht gefahrlos zerteilen, und ein leerer Abschnitt waere
+    schlechter als ein zu langer. Ab dem zweiten Satz gilt das Budget hart.
+    """
+    genommen: list[str] = []
+    laenge = 0
+    for s in saetze:
+        if genommen and laenge + len(s) > budget:
+            break
+        genommen.append(s)
+        laenge += len(s) + 1
+    return " ".join(genommen), saetze[len(genommen):]
+
+
+def broll_zuteilung(seed: int, plan: list[tuple[str, str, int]]) -> dict[str, list[str]]:
     """Clips fuer ALLE Szenen eines Videos in einem Zug waehlen.
 
     Je Kategorie wird der Pool mit dem Fall-Seed gemischt und dann OHNE
@@ -141,6 +241,11 @@ def broll_zuteilung(seed: int) -> dict[str, list[str]]:
     Ersetzt pick_broll(role, seed+t): dessen Index kollidierte modulo
     Poolgroesse — die Szenenstarts 10 (story) und 28 (zahlen) landeten bei
     9 Clips beide auf Index 1, hook (0) und cliffhanger (36) beide auf 0.
+
+    `plan` ist die Liste (Rolle, Bildkategorie, Anzahl) — sie kommt aus
+    `build_spec()`, weil beides dort vom Text abhaengt: welche Abschnitte es
+    ueberhaupt gibt, welche Bildsorte zum Satz passt und wie viele Bilder in
+    die gesprochene Dauer passen.
     """
     rnd = random.Random(seed)
     gemischt = {kat: rnd.sample(pool, len(pool)) for kat, pool in ASSETS.items()}
@@ -152,10 +257,8 @@ def broll_zuteilung(seed: int) -> dict[str, list[str]]:
     gemischt["effect"] = rnd.sample(satz, len(satz))
     vergeben = {kat: 0 for kat in ASSETS}
     zuteilung: dict[str, list[str]] = {}
-    for role in SCENE_ORDER:
-        kat = ROLE_BROLL.get(role, "street")
+    for role, kat, n in plan:
         pool = gemischt[kat]
-        n = SCENE_CLIPS.get(role, 1)
         zuteilung[role] = [pool[(vergeben[kat] + i) % len(pool)] for i in range(n)]
         vergeben[kat] += n
     return zuteilung
@@ -164,9 +267,33 @@ def broll_zuteilung(seed: int) -> dict[str, list[str]]:
 # ---------------------------------------------------------------------------
 # SZENEN-TEXTE — aus echten Fakten gebaut (keine Titel-Keyword-Heuristik mehr)
 # ---------------------------------------------------------------------------
-def _line_hook(ort: str, zeit: Optional[str], tat: str) -> str:
-    when = f"Um {zeit} Uhr" if zeit else "Mitten in der Nacht"
-    return f"{when} in {ort}: {tat or 'ein Einsatz, der die Polizei auf den Plan ruft'}."
+def _line_hook(ort: str, zeit: Optional[str], tat: str,
+               kernsatz: str = "", schaden: Optional[int] = None) -> str:
+    """Einstieg: staerkster Fakt zuerst, Ort und Zeit danach.
+
+    Die ersten Sekunden entscheiden, ob jemand weiterschaut. Bis zum 03.08.2026
+    stand hier ein Etikett („Um 04:30 Uhr in Glinde: Automaten-Sprengung.") —
+    Ort und Uhrzeit sind aber das Uninteressanteste, was eine Meldung hergibt,
+    und der Abschnitt war mit 4,6 s zugleich der kuerzeste des Clips.
+
+    Rangfolge des staerksten Fakts, der Reihe nach durchprobiert:
+      1. der erste Satz aus `details` — er nennt Tatobjekt und Umstand
+      2. die Schadenshoehe, wenn bekannt
+      3. `tat` schlicht benannt
+    Danach ein kurzer Ortsstempel. Der Abschnitt wird dadurch laenger UND
+    staerker; das ist dieselbe Aenderung, nicht zwei.
+    """
+    stempel = f"{ort}, {zeit} Uhr." if zeit else f"{ort}, mitten in der Nacht."
+
+    kern = (kernsatz or "").strip()
+    if kern:
+        return f"{kern.rstrip('.')}. {stempel}"
+    # Hier bewusst Truthiness statt `is not None` (anders als in _line_zahlen):
+    # „Sachschaden rund 0 Euro" waere als Aufhaenger unsinnig, ein Schaden von 0
+    # soll den Einstieg also gar nicht erst tragen.
+    if schaden:
+        return f"{tat or 'Ein Vorfall'} — Sachschaden rund {_eur(schaden)} Euro. {stempel}"
+    return f"{tat or 'Ein Einsatz, der die Polizei auf den Plan ruft'}. {stempel}"
 
 
 def _split_sentences(details: str) -> list[str]:
@@ -184,12 +311,19 @@ def _taeter(ungeloest: bool) -> str:
 def _line_eskalation(tat: str, first_sentence: str) -> str:
     if first_sentence:
         return first_sentence.rstrip(".") + "."
-    return f"Die Lage eskaliert schnell — {(tat or 'der Vorfall').strip().lower()} sorgt für einen Großeinsatz."
+    # Ohne .lower(): `tat` ist ein Substantiv („Automaten-Sprengung") und wird
+    # im Deutschen grossgeschrieben. Der Notnagel griff frueher selten; seit die
+    # Saetze einen Abschnitt nach vorn rutschen, faellt „sprengung sorgt fuer
+    # einen Grosseinsatz" oefter an.
+    return f"Die Lage eskaliert schnell — {(tat or 'der Vorfall').strip()} sorgt für einen Großeinsatz."
 
 
-def _line_story(werkzeug: Optional[str], rest_sentences: str, tat: str,
-                ungeloest: bool, distanz_vorhanden: bool = False) -> str:
-    """Werkzeug-Satz + restliche Fakten-Saetze.
+def _werkzeug_satz(werkzeug: Optional[str], ungeloest: bool,
+                   distanz_vorhanden: bool = False) -> str:
+    """Der Werkzeug-Satz, mit dem die Story oeffnet.
+
+    Seit 03.08.2026 eigenstaendig, damit `build_spec()` seine Laenge vom
+    Story-Budget abziehen kann, bevor es Fakten-Saetze auffuellt.
 
     Die Unschuldsvermutung schuetzt PERSONEN, nicht Ereignisse — und greift erst,
     sobald jemand identifiziert ist. Deshalb drei Varianten:
@@ -202,17 +336,26 @@ def _line_story(werkzeug: Optional[str], rest_sentences: str, tat: str,
     - `ungeloest=False` + `distanz_vorhanden=True` (`details` distanziert schon):
       agentloses Passiv, damit sich „sollen" nicht stapelt.
     """
-    if werkzeug:
-        if ungeloest:
-            prefix = f"Mit {werkzeug} gingen {_taeter(ungeloest)} vor. "
-        elif distanz_vorhanden:
-            prefix = f"Mit {werkzeug} wurde offenbar vorgegangen. "
-        else:
-            prefix = f"Mit {werkzeug} sollen {_taeter(ungeloest)} vorgegangen sein. "
-    else:
-        prefix = ""
-    rest = rest_sentences or f"Die Polizei ermittelt die Hintergründe der {tat or 'Tat'}."
-    return (prefix + rest).strip()
+    if not werkzeug:
+        return ""
+    if ungeloest:
+        return f"Mit {werkzeug} gingen {_taeter(ungeloest)} vor."
+    if distanz_vorhanden:
+        return f"Mit {werkzeug} wurde offenbar vorgegangen."
+    return f"Mit {werkzeug} sollen {_taeter(ungeloest)} vorgegangen sein."
+
+
+def _line_story(werkzeug_satz: str, rest_sentences: str) -> str:
+    """Werkzeug-Satz + die Fakten-Saetze, die ins Story-Budget passen.
+
+    Der Notnagel lautete bis 03.08.2026 „Die Polizei ermittelt die Hintergruende
+    der {tat}." — das ergab mit einem nominativen `tat` kaputte Grammatik („der
+    Versuchter Aufbruch eines Zigarettenautomaten") und wiederholte zudem das
+    Thema des Schlusses. Jetzt greift er nur noch, wenn WEDER Werkzeug NOCH ein
+    Fakten-Satz da ist, und nennt kein Genitiv-Objekt mehr.
+    """
+    teile = [t for t in (werkzeug_satz.strip(), (rest_sentences or "").strip()) if t]
+    return " ".join(teile) if teile else "Die Polizei ermittelt die Hintergründe."
 
 
 def _eur(n: int) -> str:
@@ -249,9 +392,18 @@ def _line_zahlen(beute: Optional[int], schaden: Optional[int]) -> str:
 _distanz_fehlt = parse.distanz_fehlt
 
 
-def _line_cliffhanger(ungeloest: bool) -> str:
-    return ("Von den unbekannten Tätern fehlt bis heute jede Spur — die Polizei bittet um Hinweise."
-            if ungeloest else "Die Ermittlungen laufen — der Fall ist noch nicht abgeschlossen.")
+def _line_cliffhanger(ungeloest: bool, fahndung: str = "") -> str:
+    """Schluss: erst der Fahndungsstand, dann die Spur.
+
+    `fahndung` kommt aus `parse.trenne_fahndung()` und stand bis zum 03.08.2026
+    mitten in der Story. Hier gehoert er hin — „Die Fahndung verlief erfolglos"
+    und „von den Taetern fehlt jede Spur" sind dieselbe Aussage. Der Schluss
+    wird dadurch von selbst laenger, die Story kuerzer.
+    """
+    schluss = ("Von den unbekannten Tätern fehlt bis heute jede Spur — die Polizei bittet um Hinweise."
+               if ungeloest else "Die Ermittlungen laufen — der Fall ist noch nicht abgeschlossen.")
+    f = (fahndung or "").strip()
+    return f"{f.rstrip('.')}. {schluss}" if f else schluss
 
 
 def _caption(role: str, zeit: Optional[str], ungeloest: bool, tat: str) -> str:
@@ -286,21 +438,56 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     # entstanden sind (kein erneuter Claude-Lauf noetig).
     werkzeug = parse.entschaerfe_methode(str(facts.get("werkzeug") or "")) or None
     details = parse.entschaerfe_methode((facts.get("details") or "").strip())
-    sentences = _split_sentences(details)
-    first_sentence = sentences[0] if sentences else ""
-    rest_sentences = " ".join(sentences[1:]) if len(sentences) > 1 else ""
+
+    # Fahndungssatz aus dem Tathergang loesen — er traegt jetzt den Schluss.
+    hergang, fahndung = parse.trenne_fahndung(details)
+    saetze = _split_sentences(hergang)
 
     # Steht in `details` schon Konjunktiv/„mutmaßlich"? Dann braucht der
     # Werkzeug-Satz seine eigene Distanzierung nicht zu wiederholen.
     distanz_in_details = not _distanz_fehlt(details)
 
+    # DETAILS AUF DIE ABSCHNITTE VERTEILEN — bewusst an EINER Stelle, damit
+    # nachvollziehbar bleibt, welcher Satz wo landet, und jeder Abschnitt sein
+    # Zeichen-Budget kennt (siehe BUDGET_SEK).
+    #
+    # Bis 03.08.2026: hook bekam gar keinen Satz (nur Ort/Zeit als Etikett),
+    # eskalation den ersten, story ALLE uebrigen. Ergebnis am Fall Glinde:
+    # hook 4,6 s, story 18,5 s.
+    #
+    # Der Hook nimmt den ersten Satz nur, wenn er nicht ausufert — sonst traegt
+    # der gebaute Kurz-Einstieg und der Satz bleibt fuer die eskalation liegen.
+    # Ohne diese Bremse lief der Hook bei Gorxheimertal auf 11,6 s.
+    hook_satz = ""
+    if saetze and len(saetze[0]) <= _budget("hook") * 1.3:
+        hook_satz, saetze = saetze[0], saetze[1:]
+
+    eskalations_satz, saetze = _fuellen(saetze, _budget("eskalation"))
+
+    # Der Werkzeug-Satz gehoert zur Story und zaehlt gegen ihr Budget.
+    werkzeug_satz = _werkzeug_satz(werkzeug, ungeloest, distanz_in_details)
+    story_saetze, saetze = _fuellen(saetze, max(0, _budget("story") - len(werkzeug_satz)))
+    # Was danach uebrig bleibt, faellt weg. Straffen ist erlaubt — dieselbe
+    # Regel, nach der auch der Lektor arbeitet („Nebensaechliches darf ganz
+    # wegfallen"). Die Kernfakten stecken in Ort, Zeit, Tat, Beute und Schaden
+    # und werden separat gesetzt, nicht aus `details` gezogen.
+
     lines = {
-        "hook": _line_hook(ort, zeit, tat),
-        "eskalation": _line_eskalation(tat, first_sentence),
-        "story": _line_story(werkzeug, rest_sentences, tat, ungeloest, distanz_in_details),
+        "hook": _line_hook(ort, zeit, tat, hook_satz, schaden),
+        "eskalation": _line_eskalation(tat, eskalations_satz),
+        "story": _line_story(werkzeug_satz, story_saetze),
         "zahlen": _line_zahlen(beute, schaden),
-        "cliffhanger": _line_cliffhanger(ungeloest),
+        "cliffhanger": _line_cliffhanger(ungeloest, fahndung),
     }
+
+    # WELCHE ABSCHNITTE DIESER FALL HAT — die Form richtet sich nach dem, was
+    # bekannt ist, statt jedem Fall dieselben fuenf aufzuzwingen.
+    # Ohne Beute UND ohne Schaden gibt es nichts zu zeigen: bis 03.08.2026 stand
+    # dort trotzdem die Bauchbinde „Beute vs. Schaden" ueber einer leeren Tafel,
+    # waehrend der Sprecher „Die genaue Schadenshoehe ist noch unklar" sagte —
+    # vier Sekunden fuer eine Nicht-Aussage.
+    rollen = tuple(r for r in SCENE_ORDER
+                   if r != "zahlen" or beute is not None or schaden is not None)
 
     # GUARDRAIL Unschuldsvermutung — greift NUR, wenn jemand identifiziert ist.
     # Bei unbekannten/fluechtigen Taetern (ungeloest=True) gibt es keine Person,
@@ -308,13 +495,19 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     # von Polizei und Presse selbst verwendet ("Unbekannte sprengten den
     # Automaten und fluechteten"). Ein Distanz-Zusatz waere dort vorsichtiger
     # als die Quelle — und damit unnoetig.
-    # Bewusst JE ZEILE geprueft, nicht ueber beide zusammen: Sonst haette ein
+    # Bewusst JE ZEILE geprueft, nicht ueber alle zusammen: Sonst haette ein
     # „sollen" in der Werkzeug-Zeile eine Schuldbehauptung in der Eskalations-
     # Zeile verdeckt („Der Festgenommene sprengte den Automaten.").
+    #
+    # SEIT 03.08.2026 UEBER ALLE ABSCHNITTE, nicht mehr nur ueber eskalation und
+    # story: Die Fakten-Saetze wandern jetzt zwischen den Abschnitten (der erste
+    # traegt den Hook, der Fahndungssatz den Schluss). Damit kann eine
+    # Schuldbehauptung an Stellen landen, die frueher nie geprueft wurden —
+    # genau dort waere sie unbemerkt durchgerutscht.
     if not ungeloest:
         zusatz = (f"Nach bisherigen Erkenntnissen sollen {_taeter(ungeloest)} "
                   f"für die Tat verantwortlich sein.")
-        for rolle in ("eskalation", "story"):
+        for rolle in rollen:
             if _distanz_fehlt(lines[rolle]):
                 lines[rolle] = f"{zusatz} {lines[rolle]}".strip()
                 break   # einmal reicht — der Hinweis gilt fuer den ganzen Block
@@ -322,11 +515,16 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     # Deterministischer B-Roll-Seed (Titel + Quelle, damit derselbe Fall stabil bleibt)
     seed_src = f"{case.get('title', '')}|{facts.get('quelle_link') or case.get('link', '')}"
     seed = int(hashlib.md5(seed_src.encode("utf-8")).hexdigest(), 16) % 997
-    zuteilung = broll_zuteilung(seed)
+
+    # Bildplan je Abschnitt: Sorte aus dem Inhalt, Anzahl aus der geschaetzten
+    # Sprechdauer. Beides haengt am Text und wird deshalb hier bestimmt.
+    plan = [(r, _bild_kategorie(r, lines[r]), _bildanzahl(r, _sekunden(lines[r])))
+            for r in rollen]
+    zuteilung = broll_zuteilung(seed, plan)
 
     scenes: list[dict[str, Any]] = []
     t = 0
-    for role in SCENE_ORDER:
+    for role in rollen:
         d = SCENE_DURATIONS[role]
         # Nur noch Fortschrittsbalken + Beute/Schaden-Tafel. Timer, Karte,
         # Warnbalken und Tatzeit-Label sind raus (Nutzer-Entscheid
@@ -346,7 +544,7 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
         })
         t += d
 
-    voiceover = " ".join(lines[r] for r in SCENE_ORDER)
+    voiceover = " ".join(lines[r] for r in rollen)
 
     hashtags = ["#truecrime", "#deutschland", "#blaulicht", "#krimi", "#polizei", "#nachrichten"]
     tat_tag = re.sub(r"[^a-z0-9]+", "", tat.lower())[:20]
