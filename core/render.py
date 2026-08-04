@@ -108,7 +108,17 @@ def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
 
 F_SMALL = _font(34); F_CAP = _font(74)
 F_LABEL = _font(30); F_ZAHL = _font(46)
-F_HEAD = _font(96)          # Schlagzeile im Einstieg (Block c1)
+RAND = 24                   # waagerechte Luft zwischen Schrift und Kastenkante
+LUFT = 14                   # senkrechte Luft ueber und unter der Schrift
+KOPF_ZEILEN = 3             # mehr Zeilen erschlagen das Bild
+
+# Schlagzeile im Einstieg (Block c1). Mehrere Groessen, weil die Laenge der
+# Schlagzeile stark schwankt: „Automaten-Sprengung in Glinde" sind 29 Zeichen,
+# „Versuchter Aufbruch eines Zigarettenautomaten in Gorxheimertal" sind 62.
+# Mit fester Groesse brach der lange Fall auf vier Zeilen um, wurde bei drei
+# abgeschnitten und liess eine Zeile mit nur „eines" stehen.
+KOPF_GROESSEN = (96, 84, 72, 62, 54)
+_KOPF_FONTS = {g: _font(g) for g in KOPF_GROESSEN}
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +197,25 @@ def _draw_beute_schaden(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
     d.text((cx, y + box_h + 30), "vs.", font=F_LABEL, fill=(200, 200, 205, 255), anchor="mm")
 
 
+def _kopf_font(d: ImageDraw.ImageDraw, text: str, maxw: int) -> ImageFont.FreeTypeFont:
+    """Groesste Schrift, in der die Schlagzeile sauber passt.
+
+    Zwei Bedingungen, und die zweite wird gern vergessen: Es reicht nicht, dass
+    der Umbruch drei Zeilen ergibt — auch das LAENGSTE EINZELWORT muss in die
+    Breite passen. „Zigarettenautomaten" ist bei 96 px breiter als das Bild;
+    `_wrap()` setzt es dann trotzdem allein in eine Zeile, und es laeuft rechts
+    heraus.
+    """
+    for groesse in KOPF_GROESSEN:
+        fnt = _KOPF_FONTS[groesse]
+        woerter = text.split()
+        if woerter and max(d.textlength(w, font=fnt) for w in woerter) > maxw:
+            continue
+        if len(_wrap(d, text, fnt, maxw)) <= KOPF_ZEILEN:
+            return fnt
+    return _KOPF_FONTS[KOPF_GROESSEN[-1]]
+
+
 def _draw_schlagzeile(d: ImageDraw.ImageDraw, text: str) -> None:
     """Schlagzeile im Einstieg (Block c1): grosse weisse Schrift auf roten Kaesten.
 
@@ -210,13 +239,27 @@ def _draw_schlagzeile(d: ImageDraw.ImageDraw, text: str) -> None:
     t = (text or "").strip()
     if not t:
         return
-    zeilen = _wrap(d, t, F_HEAD, W - 200)[:3]   # mehr als drei Zeilen erschlagen das Bild
+    maxw = W - 200
+    fnt = _kopf_font(d, t, maxw)
+    zeilen = _wrap(d, t, fnt, maxw)[:KOPF_ZEILEN]
+
+    # Kastenhoehe aus der Schriftmetrik statt als feste Zahl — so bleibt die
+    # Luft ueber und unter der Schrift gleich, egal welche Groesse gewaehlt wurde.
+    asc, desc = fnt.getmetrics()
+    kasten_h = asc + desc + LUFT * 2
+
     y = 300
     for ln in zeilen:
-        breite = d.textlength(ln, font=F_HEAD)
-        d.rectangle([56, y, 56 + breite + 48, y + 122], fill=RED + (240,))
-        d.text((80, y + 6), ln, font=F_HEAD, fill=(255, 255, 255, 255))
-        y += 134
+        breite = d.textlength(ln, font=fnt)
+        d.rectangle([56, y, 56 + breite + RAND * 2, y + kasten_h], fill=RED + (240,))
+        # anchor="lm" setzt die Schrift senkrecht auf die MITTE des Kastens.
+        # Bewusst ueber die Font-Metrik und nicht ueber die Tinte der einzelnen
+        # Zeile: Sonst saesse „Automaten-Sprengung" (mit Unterlaengen in p/g)
+        # anders als „in Glinde" (ohne) — die Kaesten wuerden gegeneinander
+        # verrutschen.
+        d.text((56 + RAND, y + kasten_h // 2), ln, font=fnt,
+               fill=(255, 255, 255, 255), anchor="lm")
+        y += kasten_h + 12
 
 
 def _draw_bilanz_kopf(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
