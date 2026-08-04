@@ -19,11 +19,38 @@ $sockets = @(
 foreach ($s in $sockets) { wsl -d Ubuntu -e rm -f $s 2>&1 | Out-Null }
 Write-Host "  erledigt (via WSL)"
 
-# Reste alter Umbenenn-Versuche entfernen, falls noch vorhanden
+# Reste alter Umbenenn-Versuche entfernen, falls noch vorhanden.
+# Zwei Fallen, beide am 04.08.2026 aufgefallen:
+#
+#  1. Windows kann diese Ordner nicht loeschen, weil eine engine.sock darin
+#     liegt - derselbe AF_UNIX-Reparse-Point wie oben ("Das System kann auf die
+#     Datei nicht zugreifen"). Remove-Item scheiterte deshalb bei JEDEM Start.
+#     Loesung ist dieselbe wie oben: WSL kann es.
+#  2. Im catch-Block ist $_ das FEHLEROBJEKT, nicht der Ordner aus der Pipeline.
+#     Die Meldung "bleibt liegen:" kam dadurch ohne Namen - man sah, dass etwas
+#     klemmt, aber nicht was. Der Ordner wird jetzt vorher festgehalten.
 foreach ($basis in @("$env:LOCALAPPDATA", "$env:LOCALAPPDATA\Docker")) {
     Get-ChildItem $basis -Directory -Filter "*_alt_*" -ErrorAction SilentlyContinue | ForEach-Object {
-        try { Remove-Item $_.FullName -Recurse -Force -ErrorAction Stop; Write-Host "  geloescht: $($_.Name)" }
-        catch { Write-Host "  bleibt liegen: $($_.Name)" -ForegroundColor Yellow }
+        $ordner = $_
+        try {
+            Remove-Item $ordner.FullName -Recurse -Force -ErrorAction Stop
+            Write-Host "  geloescht: $($ordner.Name)"
+        }
+        catch {
+            $wsl = "/mnt/" + $ordner.FullName.Substring(0, 1).ToLower() +
+                   $ordner.FullName.Substring(2).Replace("\", "/")
+            wsl -d Ubuntu -e rm -rf $wsl 2>&1 | Out-Null
+            if (Test-Path $ordner.FullName) {
+                # Harmlos, nur nicht wegzubekommen: Diese Ordner enthalten eine
+                # 0-Byte-engine.sock als Reparse-Point. Windows kommt nicht ran,
+                # und WSL SIEHT den Ordner nicht einmal (04.08.2026 geprueft:
+                # `ls` in AppData/Local listet ihn nicht, obwohl Windows ihn
+                # zeigt). Kein Grund zur Warnfarbe - Docker startet damit.
+                Write-Host "  bleibt liegen (harmlos, 0 Byte): $($ordner.Name)" -ForegroundColor DarkGray
+            } else {
+                Write-Host "  geloescht via WSL: $($ordner.Name)"
+            }
+        }
     }
 }
 
