@@ -78,23 +78,31 @@ EFFEKT_SAETZE = [
 # Was bei der Sichtung durchfaellt, wird hier gestrichen.
 # Motiv-Zuordnung laut BROLL_PLAN.md — bei der Sichtung bestaetigen.
 #
-# NUR ECHTE TAETER-/FLUCHT-MOTIVE. Der Block c3 heisst „die Taeter: Ankunft,
-# Bewegung, Flucht" — was dort gezogen wird, muss auch Taeter oder Flucht
-# zeigen. Bis 04.08.2026 lag `broll_cctv_07` mit im Topf (leere Strasse im
-# Morgengrauen, Bremsspuren) und landete deshalb regelmaessig in c3, obwohl es
-# weder Taeter noch Flucht zeigt — es ist ein Stimmungsbild fuer den
-# ungeklaerten Fall. Zusaetzlich spielt es im Schnee und verstoesst damit gegen
-# die Austauschbarkeit (ein Winterbild laesst sich nur mit Winterbildern
-# kombinieren).
+# NUR MOTIVE, DIE NICHTS BEHAUPTEN KOENNEN (Nutzer-Entscheid 04.08.2026).
 #
-# `_07` bleibt im Bucket, aber in keinem Topf: c4 traegt die Bilanz ohne Bild,
-# und einen eigenen Stimmungs-Block gibt es nicht.
-CCTV_CLIPS = [
-    "broll_cctv_02.mp4",   # Taeter-Vorfahrt
-    "broll_cctv_03.mp4",   # Taeter rennt
-    "broll_cctv_04.mp4",   # Taeter-Gestalten mit Beutetasche
-    "broll_cctv_05.mp4",   # Flucht-Roller
-    "broll_cctv_06.mp4",   # Fluchtwagen
+# c3 heisst „die Taeter: Ankunft, Bewegung, Flucht". Sobald ein Motiv ein
+# FAHRZEUG zeigt, behauptet das Bild ein Fluchtmittel — und die Meldung nennt
+# oft ein anderes. Belegt an Glinde: dort fluechten die Taeter laut Meldung
+# „auf Fahrraedern", waehrend der Topf ein wegfahrendes Auto und einen Roller
+# anbot. Dieselbe Fehlerklasse wie Zigarettenautomat statt Geldautomat, nur
+# weniger auffaellig.
+#
+# Uebrig bleiben die beiden Motive OHNE Fahrzeug — Menschen zu Fuss. Die
+# koennen zu keiner Meldung im Widerspruch stehen.
+#
+# Draussen und warum:
+#   _02 Taeter-Vorfahrt   — ankommendes Auto, behauptet ein Fahrzeug
+#   _05 Flucht-Roller     — behauptet einen Roller
+#   _06 Fluchtwagen       — behauptet ein Auto
+#   _07 leere Strasse     — weder Taeter noch Flucht; zudem Schnee, also nur
+#                           mit Winterbildern kombinierbar
+# Alle bleiben im Bucket, nur in keinem Topf.
+#
+# PREIS DIESER ENTSCHEIDUNG: c3 hat damit nur noch ZWEI Motive. Bis der Topf
+# waechst, sehen alle Videos an dieser Stelle sehr aehnlich aus.
+TAETER_MOTIVE = [
+    "broll_cctv_03.mp4",   # einzelne Gestalt rennt
+    "broll_cctv_04.mp4",   # zwei Gestalten mit Beutetasche an der Hauswand
 ]
 
 # Die uebrigen Kategorien stehen weiter auf 1 — dort liegt je ein Clip.
@@ -102,7 +110,7 @@ CCTV_CLIPS = [
 ASSETS = {
     "street":    [f"broll_strasse_{i:02d}.mp4"   for i in range(1, 2)],
     "blaulicht": [f"broll_blaulicht_{i:02d}.mp4" for i in range(1, 2)],
-    "cctv":      list(CCTV_CLIPS),
+    "cctv":      list(TAETER_MOTIVE),
     "location":  [f"broll_kulisse_{i:02d}.mp4"   for i in range(1, 2)],
     "effect":    [clip for satz in EFFEKT_SAETZE for clip in satz],
 }
