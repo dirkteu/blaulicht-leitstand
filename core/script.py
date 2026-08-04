@@ -451,6 +451,31 @@ def _line_bilanz(beute: Optional[int], schaden: Optional[int],
     return " ".join(teile)
 
 
+# Schlagzeile fuer c1 — kurz, gross, und bewusst OHNE Boulevard-Duktus.
+#
+# Form ja, Ton nein (Nutzer-Entscheid 04.08.2026): grosse fette Schrift und
+# Farbkasten wie bei einer Boulevard-Schlagzeile, aber kein Ausrufezeichen,
+# keine Superlative, und Rot statt des bekannten Gelbs. CLAUDE.md §6 verlangt
+# „sachlich-dokumentarisch, nie reisserisch" — und begruendet das mit der
+# Plattform-Moderation, nicht mit Geschmack.
+#
+# QUELLE IST BEWUSST `tat` + `ort`, NICHT `case.title`: Der Titel ist die
+# ungefilterte Ueberschrift der Pressemeldung. `tat` und `ort` sind durch
+# `extract.sanitize()` gelaufen (Ort nur auf Stadtebene) und `tat` zusaetzlich
+# durch `entschaerfe_methode()`. Die Schlagzeile ist der am besten lesbare Text
+# im Clip — sie darf nicht der einzige ungeprueft sein.
+SCHLAGZEILE_MAX = 52
+
+
+def _schlagzeile(tat: str, ort: str) -> str:
+    """Kurze Schlagzeile aus geprueften Fakten."""
+    t = (tat or "").strip().rstrip(".")
+    if len(t) > SCHLAGZEILE_MAX:
+        # Lieber hart kuerzen als drei Zeilen Kleingedrucktes gross setzen.
+        t = t[:SCHLAGZEILE_MAX].rsplit(" ", 1)[0].rstrip(" ,-")
+    return f"{t} in {ort}".strip() if ort else t
+
+
 def _caption(block_id: str, zeit: Optional[str], ungeloest: bool, tat: str,
              hat_zahlen: bool) -> str:
     if block_id == "c1":
@@ -473,7 +498,13 @@ def _caption(block_id: str, zeit: Optional[str], ungeloest: bool, tat: str,
 def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     facts = facts or {}
     ort = (facts.get("ort") or case.get("region") or "unbekannter Ort").strip()
-    tat = (facts.get("tat") or case.get("title") or "Vorfall").strip()
+    # `tat` faellt notfalls auf `case.title` zurueck — und das ist die
+    # UNGEFILTERTE Ueberschrift der Pressemeldung, die nie durch
+    # `extract.sanitize()` gelaufen ist. Dort stehen Namen, Strassen und
+    # Methoden-Details. `tat` landet in Bauchbinde und Schlagzeile, also im am
+    # besten lesbaren Text des Clips — deshalb hier durch dieselbe Schranke.
+    tat = parse.entschaerfe_methode(
+        (facts.get("tat") or case.get("title") or "Vorfall").strip()) or "Vorfall"
     zeit = facts.get("zeit")
     beute = facts.get("beute_eur")
     schaden = facts.get("schaden_eur")
@@ -553,6 +584,11 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
                 lines[b.id] = f"{zusatz} {lines[b.id]}".strip()
                 break   # einmal reicht — der Hinweis gilt fuer den ganzen Clip
 
+    # Schlagzeile fuer c1. Steht hier bei den Zeilen, weil sie derselben
+    # Pruefung unterliegt wie der gesprochene Text — sie ist der am besten
+    # lesbare Text im Clip.
+    schlagzeile = _schlagzeile(tat, ort)
+
     # Deterministischer B-Roll-Seed (Titel + Quelle, damit derselbe Fall stabil bleibt)
     seed_src = f"{case.get('title', '')}|{facts.get('quelle_link') or case.get('link', '')}"
     seed = int(hashlib.md5(seed_src.encode("utf-8")).hexdigest(), 16) % 997
@@ -579,14 +615,20 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
         if b.id == "c4" and hat_zahlen:
             overlay.append("daten:beute_schaden")
 
-        scenes.append({
+        szene: dict[str, Any] = {
             "t_start": round(t, 2), "t_end": round(t + d, 2), "role": b.id,
             "vo": lines[b.id],
             "caption": _caption(b.id, zeit, ungeloest, tat, hat_zahlen),
             "broll": zuteilung.get(b.id, []),
             "overlay": overlay,
             "sfx": b.sfx,
-        })
+        }
+        # Schlagzeile nur im Einstieg — die ersten Sekunden entscheiden, und
+        # auf TikTok wird ohne Ton geschaut. In den uebrigen Bloecken wuerde
+        # sie das Bild zudecken statt es zu tragen.
+        if b.id == "c1":
+            szene["headline"] = schlagzeile
+        scenes.append(szene)
         t += d
 
     voiceover = " ".join(lines[b.id] for b in bloecke)

@@ -108,6 +108,7 @@ def _font(size: int, bold: bool = True) -> ImageFont.FreeTypeFont:
 
 F_SMALL = _font(34); F_CAP = _font(74)
 F_LABEL = _font(30); F_ZAHL = _font(46)
+F_HEAD = _font(96)          # Schlagzeile im Einstieg (Block c1)
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +185,38 @@ def _draw_beute_schaden(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
     d.text((x_right + box_w // 2, y + 138), schaden or "—", font=F_ZAHL, fill=(240, 240, 243, 255), anchor="mm")
 
     d.text((cx, y + box_h + 30), "vs.", font=F_LABEL, fill=(200, 200, 205, 255), anchor="mm")
+
+
+def _draw_schlagzeile(d: ImageDraw.ImageDraw, text: str) -> None:
+    """Schlagzeile im Einstieg (Block c1): grosse weisse Schrift auf roten Kaesten.
+
+    FORM JA, TON NEIN (Nutzer-Entscheid 04.08.2026). Die Machart ist der
+    Boulevard-Schlagzeile abgeschaut — grosse fette Schrift, hoher Kontrast,
+    Farbkasten hinter jeder Zeile —, die Tonlage nicht: kein Ausrufezeichen,
+    keine Superlative, und Rot statt des bekannten Gelbs. CLAUDE.md §6 verlangt
+    „sachlich-dokumentarisch, nie reisserisch", und zwar wegen der
+    Plattform-Moderation.
+
+    Warum ueberhaupt: Auf TikTok wird ohne Ton geschaut, und die ersten
+    Sekunden entscheiden. Ausserdem macht eine grosse Schlagzeile den
+    wiederverwendeten Clip zum Hintergrund statt zum Motiv — sie ist in jedem
+    Video anders, weil der Fall anders ist. Das ist die einzige Vielfalt, die
+    nichts kostet.
+
+    Jede Zeile bekommt einen eigenen Kasten, der sich an die Textbreite legt
+    (nicht ein Block ueber die volle Breite) — sonst entstehen bei kurzen
+    Zeilen grosse leere Farbflaechen.
+    """
+    t = (text or "").strip()
+    if not t:
+        return
+    zeilen = _wrap(d, t, F_HEAD, W - 200)[:3]   # mehr als drei Zeilen erschlagen das Bild
+    y = 300
+    for ln in zeilen:
+        breite = d.textlength(ln, font=F_HEAD)
+        d.rectangle([56, y, 56 + breite + 48, y + 122], fill=RED + (240,))
+        d.text((80, y + 6), ln, font=F_HEAD, fill=(255, 255, 255, 255))
+        y += 134
 
 
 def _draw_bilanz_kopf(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
@@ -277,6 +310,8 @@ def _draw_overlay(spec: dict[str, Any], facts: dict[str, Any], t: float, frac: f
         d.text((56, 132), b if isinstance(b, str) else " + ".join(b),
                font=F_SMALL, fill=(200, 200, 205, 220))
 
+    if s.get("headline"):
+        _draw_schlagzeile(d, s["headline"])
     if s.get("role") == "c4":
         _draw_bilanz_kopf(d, facts)
     if s.get("role") == "zahlen" or _wants(s, "daten:beute_schaden"):
