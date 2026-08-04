@@ -197,6 +197,24 @@ def _draw_beute_schaden(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
     d.text((cx, y + box_h + 30), "vs.", font=F_LABEL, fill=(200, 200, 205, 255), anchor="mm")
 
 
+def _kopf_zeilen(d: ImageDraw.ImageDraw, text: str, fnt: ImageFont.FreeTypeFont,
+                 maxw: int) -> list[str]:
+    """Schlagzeile umbrechen — „in {Ort}" bleibt immer zusammen.
+
+    Die Schlagzeile entsteht als „{Tat} in {Ort}". Ein „in" am Zeilenende mit
+    dem Ortsnamen allein in der naechsten Zeile liest sich wie ein Fehler:
+    „Geldautomaten-Sprengung in" / „Fuerth". Deshalb wird vor dem letzten
+    „ in " hart getrennt und jede Haelfte fuer sich umgebrochen.
+
+    `rpartition` und nicht `partition`: Die Tat kann selbst ein „in" enthalten
+    („Einbruch in Gaststaette in Musterstadt") — gemeint ist immer das letzte.
+    """
+    kopf, trenner, ort = text.rpartition(" in ")
+    if not trenner:
+        return _wrap(d, text, fnt, maxw)
+    return _wrap(d, kopf, fnt, maxw) + _wrap(d, f"in {ort}", fnt, maxw)
+
+
 def _kopf_font(d: ImageDraw.ImageDraw, text: str, maxw: int) -> ImageFont.FreeTypeFont:
     """Groesste Schrift, in der die Schlagzeile sauber passt.
 
@@ -211,7 +229,7 @@ def _kopf_font(d: ImageDraw.ImageDraw, text: str, maxw: int) -> ImageFont.FreeTy
         woerter = text.split()
         if woerter and max(d.textlength(w, font=fnt) for w in woerter) > maxw:
             continue
-        if len(_wrap(d, text, fnt, maxw)) <= KOPF_ZEILEN:
+        if len(_kopf_zeilen(d, text, fnt, maxw)) <= KOPF_ZEILEN:
             return fnt
     return _KOPF_FONTS[KOPF_GROESSEN[-1]]
 
@@ -241,7 +259,7 @@ def _draw_schlagzeile(d: ImageDraw.ImageDraw, text: str) -> None:
         return
     maxw = W - 200
     fnt = _kopf_font(d, t, maxw)
-    zeilen = _wrap(d, t, fnt, maxw)[:KOPF_ZEILEN]
+    zeilen = _kopf_zeilen(d, t, fnt, maxw)[:KOPF_ZEILEN]
 
     # Kastenhoehe aus der Schriftmetrik statt als feste Zahl — so bleibt die
     # Luft ueber und unter der Schrift gleich, egal welche Groesse gewaehlt wurde.
