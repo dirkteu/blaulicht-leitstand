@@ -314,10 +314,17 @@ def _draw_bilanz_kopf(d: ImageDraw.ImageDraw, facts: dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 # 1) HINTERGRUND je Szene (B-Roll oder Platzhalter) -> ein Video
 # ---------------------------------------------------------------------------
-def _build_background(spec: dict[str, Any], broll_local_paths: dict[str, str], workdir: str) -> tuple[str, int]:
+def _build_background(spec: dict[str, Any], broll_local_paths: dict[str, str], workdir: str) -> str:
+    """Hintergrundspur bauen: je Block dessen Clips, sonst eine Farbflaeche.
+
+    Gab bis 04.08.2026 zusaetzlich einen Zaehler `used_broll` zurueck, den der
+    Aufrufer nie las. Er waere inzwischen auch irrefuehrend: c4 hat bewusst
+    kein Bild, „weniger Clips als Bloecke" ist also der Normalfall und kein
+    Hinweis auf ein Problem.
+    """
     bgdir = os.path.join(workdir, "_bg")
     os.makedirs(bgdir, exist_ok=True)
-    parts, used_broll = [], 0
+    parts = []
 
     for i, s in enumerate(spec["scenes"]):
         d = _scene_dur(s)
@@ -342,7 +349,6 @@ def _build_background(spec: dict[str, Any], broll_local_paths: dict[str, str], w
                              "crop=1080:1920,setsar=1,fps=30",
                       "-an", "-c:v", "libx264", "-pix_fmt", "yuv420p", out])
                 parts.append(out)
-            used_broll += 1
         else:
             r = ROLE_TINT.get(s.get("role", ""), ROLE_TINT["story"])
             hexc = "0x%02X%02X%02X" % r
@@ -359,7 +365,7 @@ def _build_background(spec: dict[str, Any], broll_local_paths: dict[str, str], w
     bgv = os.path.join(workdir, "_bg.mp4")
     _run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", listfile,
           "-c:v", "libx264", "-pix_fmt", "yuv420p", bgv])
-    return bgv, used_broll
+    return bgv
 
 
 # ---------------------------------------------------------------------------
@@ -453,7 +459,7 @@ def render(spec: dict[str, Any],
 
     workdir = tempfile.mkdtemp(prefix="blaulicht_render_")
     try:
-        bgv, used = _build_background(spec, broll_local_paths, workdir)
+        bgv = _build_background(spec, broll_local_paths, workdir)
 
         frames_dir = os.path.join(workdir, "_frames")
         os.makedirs(frames_dir, exist_ok=True)

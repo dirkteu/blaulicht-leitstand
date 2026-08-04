@@ -52,7 +52,13 @@
     <div class="scene-card">
       <div class="scene-head">
         <span class="scene-role">{{ sc.role }}</span>
-        <span class="muted small">{{ sc.t_start }}s – {{ sc.t_end }}s · B-Roll: {{ sc.broll if sc.broll is string else (sc.broll or []) | join(' + ') }} · SFX: {{ sc.sfx }}</span>
+        {# SFX bewusst NICHT angezeigt (04.08.2026): Das Feld steht zwar in der
+           Spec, aber core/render.py liest es nirgends — es gibt im fertigen
+           Clip keinen einzigen Toneffekt. Die Anzeige „SFX: boom" behauptete
+           damit eine Tonspur, die niemand hoert. Das Feld bleibt als geplanter
+           Vertrag stehen (Abarbeitungsliste, Abschnitt Ton); angezeigt wird es
+           erst wieder, wenn der Renderer es auch benutzt. #}
+        <span class="muted small">{{ sc.t_start }}s – {{ sc.t_end }}s · B-Roll: {{ sc.broll if sc.broll is string else (sc.broll or []) | join(' + ') }}</span>
         {% set lb = lesbarkeit[loop.index0] %}
         <span class="lb lb-{{ lb.ampel }}"
               title="Lesbarkeit (Wiener Sachtextformel){% for m in lb.marker %} · {{ m }}{% endfor %}">

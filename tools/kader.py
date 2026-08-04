@@ -94,7 +94,7 @@ def kader(pfad: Path, modus: str, breite: int, versatz: int,
     saehen zwei seit-Clips nahezu gleich aus.
     """
     master = Image.open(pfad).convert("RGB")
-    W, H = master.size
+    W = master.size[0]          # die Hoehe rechnet schneide() selbst aus
     if mitte_y is None:
         mitte_y = SEIT_MITTE_Y
 

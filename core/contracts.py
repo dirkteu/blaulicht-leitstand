@@ -151,7 +151,10 @@ class Bucket(str, Enum):
     BROLL = "broll"       # Master-Clips (nur lesen im Render!)
     VOICE = "voice"
     RENDERS = "renders"
-    THUMBS = "thumbs"
+    # GELOESCHT (04.08.2026): THUMBS = "thumbs" — nie verwendet. Es gibt keinen
+    # Thumbnail-Schritt in der Pipeline; `meta.thumbnail_prompt` ist am 03.08.
+    # aus demselben Grund entfallen. Der Bucket bleibt in Supabase bestehen,
+    # nur die Konstante hier war ohne Abnehmer.
 
 
 # B-Roll-Kategorien (Namensmuster: broll_<kategorie>_NN.mp4).

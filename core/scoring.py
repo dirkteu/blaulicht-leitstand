@@ -56,9 +56,12 @@ CATEGORIES = [
     ("Sonstiges",           r".*"),
 ]
 
-# Schwellen (wie ranking.py) — hier zentral, damit ingest/api sie teilen koennen.
-SHORT_THRESHOLD = 70          # ab hier ein eigenstaendiger Short
-RESERVOIR_THRESHOLD = 40      # darunter -> verwerfen
+# GELOESCHT (04.08.2026): SHORT_THRESHOLD = 70 und RESERVOIR_THRESHOLD = 40.
+# Beide waren nie in Gebrauch — der Kommentar („hier zentral, damit ingest/api
+# sie teilen koennen") beschrieb eine Absicht, die nie umgesetzt wurde. Die
+# tatsaechliche Schwelle steht in der DB-Konfiguration und wird ueber
+# `supa.get_config()["min_score"]` gelesen (workers/ingest.py). Zwei Zahlen fuer
+# dieselbe Entscheidung im Code zu halten, waere eine zweite Wahrheit.
 
 
 def score_case(text: str) -> tuple[int, list[str]]:

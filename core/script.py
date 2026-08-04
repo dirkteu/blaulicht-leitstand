@@ -29,7 +29,10 @@ from typing import Any, NamedTuple, Optional
 from . import parse
 
 CHANNEL = "Nachtknall"
-DURATION = 42  # Ziel-Länge in Sekunden (Richtwert, siehe durs unten)
+# GELOESCHT (04.08.2026): DURATION = 42. Die Ziel-Laenge gibt es nicht mehr —
+# die Cliplaenge ergibt sich aus dem gesprochenen Text (siehe BLOECKE und
+# BUDGET_SEK). Der Kommentar verwies ohnehin auf ein „durs unten", das schon
+# vorher verschwunden war.
 
 # Steht unter jeder Video-Beschreibung (workers/publish.py baut sie aus
 # spec.meta.caption). Signalisiert der Plattform-Moderation Dokumentation statt
