@@ -18,6 +18,12 @@ Straße, Hausnummer, PLZ, Koordinaten. Durchgesetzt an zwei Stellen:
 `core.contracts.Facts.VERBOTEN` und `core.extract.sanitize()` — letztere
 arbeitet bewusst **unabhängig vom Prompt**, weil Modellverhalten keine Garantie ist.
 
+> **`case.title` ist ungefiltert.** Der Rohtitel der Pressemeldung läuft nie
+> durch `sanitize()` — dort stehen Namen, Straßen und Quellenkürzel. Alles, was
+> aus ihm gebaut wird (`tat` fällt notfalls darauf zurück), muss durch dieselbe
+> Schranke. Er landet sonst in Bauchbinde und Schlagzeile, also im am besten
+> **lesbaren** Text des Clips. Gefunden am 04.08.2026.
+
 ### 2. Keine Nachahmungs-Anleitung
 Die **Tat darf benannt** werden („gesprengt", „Sprengung", „Explosion",
 „Winkelschleifer"). Das **WIE niemals**: keine Stoffarten, Mengen, Zuführung,
@@ -81,6 +87,12 @@ Garantiert ist nur, was in Code geprüft wird. Warnungen landen im Feld
 Automatisch **korrigiert** wird nur, was sicher korrigierbar ist. Grammatik
 umbauen gehört nicht dazu — dort nur warnen und den Menschen entscheiden lassen.
 
+**Geprüft wird JEDE erzeugte Zeile, nie eine Auswahl.** Die
+Unschuldsvermutungs-Prüfung lief bis 04.08.2026 nur über zwei von fünf
+Abschnitten. Das ging gut, solange die Sätze immer an derselben Stelle standen —
+und wurde in dem Moment gefährlich, in dem sie zwischen den Blöcken zu wandern
+begannen. Wer die Verteilung ändert, muss die Prüfung mitziehen.
+
 ---
 
 ## Architektur
@@ -99,6 +111,36 @@ scheduler/ 2×/Tag Auto-Ingest
 
 Zustandsmaschine: `neu → in_analyse → review → in_produktion → fertig →
 veroeffentlicht` (plus `verworfen`).
+
+### Der Grundaufbau: vier Blöcke
+
+Ein Clip besteht aus vier Blöcken. **Ein Block = ein Gedanke = eine Bildsorte.**
+Definiert in `script.BLOECKE` — eine Tabelle, nicht verstreute Wörterbücher.
+
+| Block | erzählt | Bild |
+|---|---|---|
+| **c1** | Einstieg: stärkster Fakt, dann Ort und Zeit | Polizei · trägt die Schlagzeile |
+| **c2** | Die Tat | Tatobjekt |
+| **c3** | Die Täter: Ankunft, Bewegung, Flucht | Täter — **nie ein Fahrzeug** |
+| **c4** | Bilanz: Zahlen, Fahndungsstand, Spur | **keins** |
+
+Vier Regeln, die zusammengehören:
+
+1. **Die Reihenfolge steht fest, der Text wird auf die Blöcke verteilt** — nicht
+   umgekehrt. Das macht einen Grundaufbau aus: Der Zuschauer erkennt die Form
+   wieder.
+2. **Die Länge ergibt sich aus dem gesprochenen Text.** `tts.synth()` misst und
+   schreibt `t_start`/`t_end`/`duration` zurück. Es gibt keine Soll-Dauern mehr —
+   kürzer wird ein Block nur, indem er weniger zu sagen bekommt. Gedeckelt wird
+   in **Zeichen**, nicht in Sätzen (deutsche Polizeisätze reichen von 40 bis 200).
+3. **Ein Block ohne Inhalt fällt weg.** Sagt eine Meldung nichts über die Täter,
+   gibt es kein c3. Es wird kein Text erfunden, um eine Form zu füllen.
+4. **Das Bild darf nie mehr behaupten als die Meldung.** Deshalb zeigt c3 kein
+   Fluchtfahrzeug (die Meldung nennt oft ein anderes), und c4 gar kein Bild.
+
+> **Der Clip beginnt am Ende der Geschichte.** Die Polizei kommt zuletzt, c2
+> springt zurück zur Tat. Das ist der übliche True-Crime-Einstieg, muss aber
+> sprachlich getragen werden — sonst wirkt der Sprung wie ein Fehler.
 
 **HTMX-Fallstrick:** Liefert ein Partial seinen eigenen Container mit, muss
 `hx-target="this"` + `hx-swap="outerHTML"` gesetzt sein. Mit `innerHTML`

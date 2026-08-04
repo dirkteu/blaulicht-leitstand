@@ -904,6 +904,164 @@ verschwunden**, nicht nur stillgelegt:
 Geprüft: 6 Smoke-Checks (Prompts bauen, keine Whitelist-Wörter, wetter überall
 raus, Zuteilung läuft), compileall, Jinja-Parse der /broll-Seite.
 
+## Update 2026-08-03 (Prompt-Inventar und Aufräumen)
+
+Auf User-Anstoß („schau dir alle im Programm befindlichen Prompts an") ein
+vollständiges Inventar — nicht nur die B-Roll-Prompts, sondern alle. Der Sweep
+ging über alle Dateitypen, nicht nur `.py`.
+
+**Sieben Prompt-Orte:** `extract.SYSTEM_PROMPT` (Fakten-Extraktor, größter Prompt
+im Projekt), `extract.build_user_prompt()`, `lektor.LEKTOR_SYSTEM`, dessen
+User-Turn, `tts.TTS_STYLE`, `spec["meta"]["thumbnail_prompt"]` — und, in der ersten
+Liste vergessen, **`.env` / `.env.example`**.
+
+**Der Fund, der die Einschätzung verschob:** Der TTS-Prompt, der tatsächlich
+rausgeht, stand nicht im Code, sondern in `.env`. Und die beiden sagten
+Gegenteiliges — Code-Default „**langsam**, düster", gelebte Fassung „in
+flüssigem, **zügigem Tempo** … **keine Kunstpausen**". Die gelebte Fassung stand
+schon in der versionierten `.env.example`; nur der Code-Default hinkte hinterher.
+Angeglichen, mit Kommentar an beiden Stellen. Verhalten unverändert — die ENV
+gewinnt ohnehin. Der Punkt ist, dass man den Prompt im Code lesen kann, ohne
+belogen zu werden.
+
+**Weiter aufgeräumt:** `thumbnail_prompt` entfernt (projektweit ungenutzt, es gibt
+keinen Thumbnail-Worker) · sechs „GELOESCHT (01.08.)"-Grabsteine in
+`broll_prompts.py` zu einem Absatz im Docstring, der selbst noch den gelöschten
+Automat-per-Text-Weg dokumentierte · `broll_prompts.md` (Stand 26.07.) gelöscht ·
+`BROLL_PLAN.md` auf die geltenden Beschlüsse eingedampft — **Dateiname und
+Beschluss-Nummern bleiben**, weil sechs Code-Kommentare darauf verweisen.
+Beschluss 5 wurde geteilt statt gestrichen: Das Einfrieren von Ort und
+Beleuchtung ist aufgehoben, „nie über Einzelclip-Würfeln" gilt weiter und trägt
+`EFFEKT_SAETZE`.
+
+## Update 2026-08-03 (Sichtung der cctv-Clips — und der eigentliche Befund)
+
+**Die sechs cctv-Clips sind Ausschuss, und zwar aus drei Gründen** — zwei davon
+standen nirgends:
+
+1. **Kauderwelsch-Schilder in allen sechs:** „ACHEUT ab 18", „ACHUTE ab 18",
+   „ACHTUN ab 18", dazu „POLIZAI" als Ladenfront und POLIZEI-Schilder an
+   Wohnhäusern.
+2. **Der Zeitstempel verrät den Fake (5 von 6):** `_03` läuft **rückwärts**
+   (18:38.25 → 18:32.19), `_05` **steht still** über fünf Sekunden, `_06` zeigt
+   die Stunde „218", `_04` und `_07` springen wirr.
+3. **Sie passen nicht zueinander:** `_07` spielt im **Schnee** bei blauer
+   Morgenstunde, die übrigen in schneefreier Nacht. Dazu ein lesbares
+   Kennzeichen und ein Polizeiwagen im Fluchtwagen-Motiv.
+
+Alle sind **720×1280**, nicht 1080p wie im `/broll`-Befehl vorgeschrieben.
+
+**Der erste Render seit dem 01.08.** (Fall Glinde, lokal ohne Docker) brachte den
+Befund, um den sich alles Weitere dreht: **Der Clip zeigt nicht den Fall, über den
+er redet.** Glinde und Fürth sind *Geldautomaten*-Fälle; zu sehen war ein roter
+*Zigarettenautomat am Straßenrand* unter der Bauchbinde „Geldautomat-Sprengung".
+
+**Und im ganzen Vorrat gibt es keinen einzigen Geldautomaten.** Alle zehn
+`effekt`-Clips sind Zigarettenautomaten. Die VISA-Logos auf `_04`/`_05` gehören
+zur Altersprüfung — der Schwesterclip trägt den Schriftzug „Karte drauf –
+Packung raus!". *(Erste Einschätzung war „VISA = Geldautomat"; herangezoomt
+widerlegt.)*
+
+## Update 2026-08-03/04 (Grundaufbau: vier Blöcke statt zweier Strukturen)
+
+**Ausgangsproblem:** Es liefen zwei Strukturen nebeneinander, die nicht
+zueinander passten — fünf Textrollen und vier Bildteile („Vier-Teile-Klammer").
+Die Naht war sichtbar: Der Zahlen-Abschnitt hing an den Täter-Bildern, obwohl er
+über Beute und Schaden spricht.
+
+**Der Grundaufbau (User-Entwurf, 04.08.):**
+
+| Block | erzählt | Bild |
+|---|---|---|
+| c1 | Einstieg — stärkster Fakt, dann Ort und Zeit | Polizei |
+| c2 | Die Tat | Tatobjekt |
+| c3 | Die Täter — Ankunft, Bewegung, Flucht | Täter |
+| c4 | Bilanz — Zahlen, Fahndungsstand, Spur | **keins** |
+
+**Die Reihenfolge steht fest, der Text wird auf die Blöcke verteilt** — nicht
+umgekehrt. Vorher richtete sich das Bild nach dem Satz; ein Zwischenschritt, der
+die Flucht vor die Tat rutschen lassen konnte.
+
+**Die Längen ergeben sich aus dem gesprochenen Text.** `tts.synth()` misst und
+schreibt zurück; feste Soll-Dauern gibt es nicht mehr. Kürzer wird ein Block nur,
+indem er weniger zu sagen bekommt. Gemessene Sprechrate: **13,2 Zeichen/s** über
+die fünf vertonten Fälle.
+
+**Gedeckelt wird in ZEICHEN, nicht in Sätzen.** Ein Deckel auf die Satzzahl
+reichte nicht: Mit „höchstens zwei Sätze" wuchs die Story bei Fürth auf 20,3 s
+(zwei sehr lange Sätze), während sie bei Fachbach mit drei kurzen bei 9 s lag.
+
+**Ein Block darf leer bleiben und fällt dann weg.** Sagt eine Meldung nichts über
+die Täter, gibt es kein c3 — es wird kein Text erfunden, um eine Form zu füllen.
+
+**c4 löst den Zahlen-Abschnitt ab.** Zahlen sind eine Bilanz, kein Mittelteil.
+Standen sie in der Mitte, unterbrachen sie die Erzählung, die danach nur zum
+Enden nochmal anlaufen musste. `_line_zahlen()` wird nur noch aufgerufen, wenn
+ein Wert vorliegt — die leere Beute/Schaden-Tafel ist damit strukturell
+unmöglich. c4 hat **keine Bildsorte**: der einzige Block, in dem nie ein falsches
+Bild stehen kann.
+
+**Entfernt:** `SCENE_ORDER`, `SCENE_DURATIONS`, `SCENE_SFX`, `ROLE_BROLL`,
+`_bild_kategorie()`, `_line_eskalation()`, `_line_story()`, `CLIFFHANGER_BILDER`.
+
+**Ergebnis Glinde:** 41,6 s → 33–35 s. Einstieg von 4,6 auf 8,2 s, Täter-Block
+von 18,5 auf 6–8 s, kein Bild kürzer als 3,8 s oder länger als 8 s.
+
+### Zwei Guardrail-Lücken geschlossen
+
+1. **Die Unschuldsvermutungs-Prüfung lief nur über zwei von fünf Abschnitten**
+   (`eskalation`, `story`). Solange die Sätze immer an derselben Stelle standen,
+   reichte das. Seit sie zwischen den Blöcken wandern — der erste trägt c1, der
+   Fahndungssatz c4 — kann eine Schuldbehauptung dort landen, wo nie geprüft
+   wurde. Läuft jetzt über **alle** Blöcke.
+2. **`tat` fiel notfalls auf `case.title` zurück** — die ungefilterte Überschrift
+   der Pressemeldung, die nie durch `extract.sanitize()` gelaufen ist. Dort
+   stehen Namen, Straßen und Quellenkürzel („hessenschau", „WNOZ"). `tat` landet
+   in Bauchbinde **und Schlagzeile**, also im am besten lesbaren Text des Clips.
+   Läuft jetzt durch `parse.entschaerfe_methode()`.
+
+### c3: nur Motive ohne Fahrzeug
+
+Erst flog `_07` (leere Straße) aus dem Topf — weder Täter noch Flucht, dazu
+Schnee. Dann die Fahrzeuge: **Sobald ein Motiv ein Fluchtmittel zeigt, behauptet
+das Bild etwas, das die Meldung oft anders nennt.** In Glinde flüchten die Täter
+laut Meldung „auf Fahrrädern", angeboten wurden ein Auto und ein Roller.
+Dieselbe Fehlerklasse wie Zigarettenautomat statt Geldautomat, nur weniger
+auffällig.
+
+`CCTV_CLIPS` → `TAETER_MOTIVE`, darin nur noch `_03` (rennt) und `_04`
+(Gestalten mit Beutetasche). **Preis:** c3 hat zwei Motive, und beide tragen
+ausgerechnet die auffälligsten Kauderwelsch-Schilder. Bewusst in Kauf genommen —
+ein Bild, das nichts Falsches behauptet, schlägt Abwechslung.
+
+### Schlagzeile im Einstieg — Form ja, Ton nein
+
+Große weiße Schrift auf roten Kästen, oben links in c1. Machart von der
+Boulevard-Schlagzeile, Tonlage nicht: **kein Ausrufezeichen, keine Superlative,
+Rot statt des bekannten Gelbs** — CLAUDE.md §6 verlangt „nie reißerisch", und
+zwar wegen der Plattform-Moderation.
+
+Warum überhaupt: Auf TikTok wird ohne Ton geschaut, und die ersten Sekunden
+entscheiden. Vorher stand dort nur „04:30 Uhr" klein unten links. Außerdem macht
+eine große Schlagzeile den wiederverwendeten Clip zum **Hintergrund** statt zum
+Motiv — sie ist in jedem Video anders, weil der Fall anders ist. **Das ist die
+einzige Vielfalt, die nichts kostet.**
+
+Quelle ist `tat` + `ort`, nie der Rohtitel. Die Schriftgröße passt sich an
+(96–54 px): „Zigarettenautomaten" ist bei 96 px breiter als das Format, und
+`_wrap()` setzt ein zu breites Wort trotzdem allein in eine Zeile. Geprüft wird
+zusätzlich, dass das **längste Einzelwort** passt, nicht nur die Zeilenzahl.
+`in {Ort}` bleibt immer zusammen (Trennung am **letzten** „ in ", damit
+„Einbruch in Gaststätte in Musterstadt" richtig bricht).
+
+### Nebenbefund mit Folgen für die geplante Sperre
+
+**Alle Töpfe hängen an derselben Zufallsquelle.** Als der Täter-Topf von sechs
+auf zwei schrumpfte, verschob sich auch die Auswahl in `effekt` — vorher
+Wandautomat, danach VISA-Automat. „Gleicher Fall, gleiche Clips" gilt also nur
+**innerhalb eines unveränderten Bestands**. Für die Wiederverwendungs-Sperre
+(Stufe 3) ist das zu berücksichtigen.
+
 ## ⚠️ Gemini-TTS: 100 Anfragen pro Tag (2026-07-30 aufgelaufen)
 
 Beim Testen erschöpft: `generate_requests_per_model_per_day, limit: 100,
@@ -917,12 +1075,26 @@ voll) ist es schnell weg. Bei Bedarf `TTS_BACKEND=edge` als Ausweichstimme.
 ## Bekannte Punkte / TODO
 - ~~Gemini-TTS Gratis-Quota~~ **GELÖST (2026-07-26): Google-Billing aktiv** (5/5 Burst-Test ohne 429).
   Historie: Gratis-Tier hatte 10 Req/Tag + 3 Req/Min; `TTS_BACKEND=edge` bleibt als Notfall-Fallback.
-- **B-Roll-Bibliothek unvollständig:** 5 Test-Clips (je 1/Kategorie) im Bucket; Pools in `core/script.py`
-  stehen temporär auf **1** — beim Füllen der Bibliothek (3–4/Kategorie via Prompt-Generator) wieder erhöhen.
+- **B-Roll-Bibliothek je Block (Stand 04.08.2026):**
+  **c1** 1 Clip — jedes Video fängt identisch an ·
+  **c2** 10 Clips, aber **alle Zigarettenautomat**; kein Geldautomat, kein „Versuch/aufgebrochen" ·
+  **c3** 2 Motive, und beide tragen die auffälligsten Kauderwelsch-Schilder ·
+  **c4** braucht nichts.
+  Neue Clips müssen die fünf Austauschbarkeits-Bedingungen erfüllen (keine
+  Jahreszeit, keine Tageszeit-Brüche, kein wiedererkennbarer Ort, keine lesbare
+  Schrift, schnittfest) — sonst schränkt ein Clip alle anderen ein.
+- **c4 ist gestalterisch offen:** die Bilanz steht rund 12 s als fast leere dunkle Fläche.
+  Die Schlagzeilen-Behandlung aus c1 wäre der naheliegende Weg.
+- **Wiederverwendungs-Sperre offen** (Stufe 3): Auswahl ist blind für die
+  Veröffentlichungshistorie — zwei aufeinanderfolgende Videos können dieselbe
+  Kombination ziehen. Muss nachgeben können, wenn die Bibliothek zu klein ist.
 - **Ingest langsam** (~270 Dienststellen sequenziell, ~3 min) → später Threading/Limit.
 - **Worker leeren `error`-Feld nicht bei Erfolg** (kosmetisch; Badge bleibt sonst stehen).
 - ~~Render/Publish nie getestet~~ **GELÖST (2026-07-26): beide end-to-end verifiziert.** Offen bleibt nur der VPS-Deploy (`deploy/DEPLOY.md`).
-- **Overlay-Redesign offen** (Design via Higgsfield) · **fakten-bewusster Render offen** (B-Roll ↔ Fall-Text).
+- ~~**fakten-bewusster Render** (B-Roll ↔ Fall-Text)~~ **teilweise gelöst (04.08.2026):**
+  Der Text wird nach Inhalt auf c2/c3 verteilt, c3 zeigt kein Fahrzeug mehr, c4 kein
+  Bild. **Offen bleibt c2:** Geldautomaten-Fälle zeigen weiter einen Zigarettenautomaten,
+  weil es kein anderes Material gibt.
 - **Fotos aus Artikeln:** bewusst NICHT genutzt (Urheberrecht + PII-Risiko) — B-Roll/KI bleibt.
 - Alte themenfremde Fälle (vor dem Filter) wurden auf `verworfen` gesetzt, nicht gelöscht.
 
