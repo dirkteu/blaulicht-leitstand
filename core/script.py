@@ -26,7 +26,7 @@ import re
 from datetime import datetime
 from typing import Any, NamedTuple, Optional
 
-from . import parse
+from . import contracts, parse
 
 CHANNEL = "Nachtknall"
 # GELOESCHT (04.08.2026): DURATION = 42. Die Ziel-Laenge gibt es nicht mehr —
@@ -648,6 +648,9 @@ def build_spec(case: dict[str, Any], facts: dict[str, Any]) -> dict[str, Any]:
     ]
 
     return {
+        # Formatkennung — siehe contracts.SPEC_FORMAT. Der Renderer weigert
+        # sich, eine fremde Nummer zu verarbeiten.
+        "format": contracts.SPEC_FORMAT,
         "generated": datetime.now().isoformat(timespec="seconds"),
         "channel": CHANNEL,
         # Aus dem letzten t_end statt aus der aufsummierten Gleitkommazahl —

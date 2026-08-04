@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import os
 
-from core.contracts import Bucket, State
+from core.contracts import SPEC_FORMAT, Bucket, State
 from core.supa import get_case, update_case, set_state, upload, download
 from core.render import render as render_video
 
@@ -36,6 +36,25 @@ def render(case_id: str) -> None:
     if not spec:
         set_state(case_id, State.REVIEW.value,
                    error="render: 'spec' fehlt (tts-Stufe ist noch nicht gelaufen).")
+        return
+
+    # FORMATSPERRE. Die Spec liegt in der DB und ueberlebt Code-Aenderungen.
+    # Am 04.08.2026 entstand so ein Video aus einer Spec vom 26.07.: fuenf
+    # Rollen statt vier Bloecke, keine Schlagzeile, und drei der fuenf
+    # angeforderten Clips existierten im Bucket gar nicht mehr — der Renderer
+    # ersetzte sie stillschweigend durch schwarze Flaechen. Niemand konnte
+    # sehen, dass die Bauanleitung veraltet war.
+    #
+    # Reines Neu-Rendern genuegt NICHT: Mit der Struktur aendert sich auch der
+    # gesprochene Text, also muessen script UND tts erneut laufen. Genau das
+    # loest die Freigabe Analyse aus.
+    format_ist = spec.get("format", 1)
+    if format_ist != SPEC_FORMAT:
+        set_state(case_id, State.REVIEW.value,
+                  error=(f"render: Bauanleitung veraltet (Format {format_ist}, "
+                         f"erwartet {SPEC_FORMAT}). Bitte die Analyse erneut "
+                         f"freigeben — Skript und Vertonung entstehen dabei neu. "
+                         f"Nur neu zu rendern genuegt nicht."))
         return
 
     facts = case.get("facts") or {}

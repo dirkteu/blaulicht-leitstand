@@ -163,3 +163,25 @@ BROLL_KATEGORIEN = ("strasse", "blaulicht", "cctv", "kulisse", "effekt")
 
 # Schema in Postgres, in dem die Leitstand-Tabellen liegen (kollisionsfrei).
 DB_SCHEMA = "blaulicht"
+
+
+# ---------------------------------------------------------------------------
+# SPEC-FORMAT — Versionskennung der Video-Bauanleitung
+# ---------------------------------------------------------------------------
+# Die Spec liegt in der DB und ueberlebt Code-Aenderungen. Genau daran ist am
+# 04.08.2026 ein Video gescheitert: Es wurde aus einer Spec vom 26.07.
+# gerendert, also mit fuenf Rollen, ohne Schlagzeile und mit Clip-Namen, die es
+# im Bucket gar nicht mehr gibt (drei von fuenf fehlten -> schwarze Flaechen).
+# Der Renderer nahm sie klaglos, und nichts wies darauf hin.
+#
+# Deshalb traegt jede Spec ihre Formatnummer. `workers/render.py` weigert sich,
+# eine fremde Nummer zu rendern, und schickt den Fall mit Klartext-Meldung
+# zurueck in den Review.
+#
+#   1 = fuenf Rollen (hook/eskalation/story/zahlen/cliffhanger), bis 03.08.2026
+#   2 = vier Bloecke c1-c4 mit Schlagzeile   (ab 04.08.2026)
+#
+# Beim Erhoehen: Bestandsfaelle muessen durch script + tts neu laufen, denn mit
+# der Struktur aendert sich auch der gesprochene Text. Reines Neu-Rendern
+# genuegt NICHT.
+SPEC_FORMAT = 2
