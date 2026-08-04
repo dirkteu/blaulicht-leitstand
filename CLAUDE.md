@@ -158,6 +158,13 @@ Räumt verwaiste AF_UNIX-Sockets per WSL weg (**Windows kann sie nicht löschen,
 sie blockieren sonst den Docker-Start**), startet Docker Desktop, wartet auf die
 Engine, fährt den Stack hoch. Leitstand: http://localhost:8000, Passwort in `.env`.
 
+**Das Skript baut das Image immer neu (`--build`).** Der Code hängt nicht als
+Volume im Container — das Dockerfile backt ihn mit `COPY . .` ins Image. Ohne
+Neubau läuft der Stand des letzten Builds weiter, und das merkt man erst, wenn
+ein Fix scheinbar nicht wirkt. Der Neubau kostet kaum Zeit: `apt-get` und `pip`
+hängen an früheren Schichten und bleiben im Cache, solange `requirements.txt`
+unverändert ist.
+
 ⚠️ **Gemini-TTS: 100 Anfragen/Tag** trotz aktivem Billing (≈ 20 Vertonungen,
 1 Anfrage je Szene). Beim Iterieren am Skripttext schnell erschöpft — dann
 `TTS_BACKEND=edge`. Zeigt sich als `429 RESOURCE_EXHAUSTED`.

@@ -43,11 +43,30 @@ if (-not $bereit) {
     exit 1
 }
 
-# 3) Stack hochfahren (--build nur noetig, wenn sich Code/Dockerfile geaendert hat)
-Write-Host "== Blaulicht-Stack ==" -ForegroundColor Cyan
+# 3) Stack hochfahren - IMMER mit --build.
+#    Der Code haengt NICHT als Volume im Container; das Dockerfile backt ihn mit
+#    `COPY . .` ins Image. Ohne --build startet der Stack den Stand des letzten
+#    Builds, waehrend im Projektordner laengst neuer Code liegt - und das faellt
+#    erst auf, wenn ein Clip anders aussieht als erwartet oder ein Fix scheinbar
+#    nicht wirkt. Genau deshalb steht --build hier fest drin.
+#    Kostet kaum Zeit: apt-get und pip haengen an fruehereren Schichten und
+#    bleiben im Cache, solange requirements.txt unveraendert ist. Neu laeuft nur
+#    das COPY.
+Write-Host "== Blaulicht-Stack (Image wird neu gebaut) ==" -ForegroundColor Cyan
 Push-Location $projekt
-& $docker compose up -d
+& $docker compose up -d --build
+$startCode = $LASTEXITCODE
 & $docker compose ps
 Pop-Location
+
+# Ohne diese Pruefung meldete das Skript auch nach einem fehlgeschlagenen Build
+# "Leitstand: http://localhost:8000" - und man sucht den Fehler an der falschen
+# Stelle.
+if ($startCode -ne 0) {
+    Write-Host "`nBuild oder Start fehlgeschlagen (Exit $startCode)." -ForegroundColor Red
+    Write-Host "Letzte Zeilen des Build-Logs oben pruefen; danach:" -ForegroundColor Yellow
+    Write-Host "  docker compose logs --tail 50" -ForegroundColor Yellow
+    exit 1
+}
 
 Write-Host "`nLeitstand: http://localhost:8000" -ForegroundColor Green
