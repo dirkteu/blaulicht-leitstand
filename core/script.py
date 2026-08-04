@@ -77,13 +77,24 @@ EFFEKT_SAETZE = [
 # VOR dem Befund (git: bb9dfbf, dann 8902d96), ein Rollback des Pools nie.
 # Was bei der Sichtung durchfaellt, wird hier gestrichen.
 # Motiv-Zuordnung laut BROLL_PLAN.md — bei der Sichtung bestaetigen.
+#
+# NUR ECHTE TAETER-/FLUCHT-MOTIVE. Der Block c3 heisst „die Taeter: Ankunft,
+# Bewegung, Flucht" — was dort gezogen wird, muss auch Taeter oder Flucht
+# zeigen. Bis 04.08.2026 lag `broll_cctv_07` mit im Topf (leere Strasse im
+# Morgengrauen, Bremsspuren) und landete deshalb regelmaessig in c3, obwohl es
+# weder Taeter noch Flucht zeigt — es ist ein Stimmungsbild fuer den
+# ungeklaerten Fall. Zusaetzlich spielt es im Schnee und verstoesst damit gegen
+# die Austauschbarkeit (ein Winterbild laesst sich nur mit Winterbildern
+# kombinieren).
+#
+# `_07` bleibt im Bucket, aber in keinem Topf: c4 traegt die Bilanz ohne Bild,
+# und einen eigenen Stimmungs-Block gibt es nicht.
 CCTV_CLIPS = [
     "broll_cctv_02.mp4",   # Taeter-Vorfahrt
     "broll_cctv_03.mp4",   # Taeter rennt
     "broll_cctv_04.mp4",   # Taeter-Gestalten mit Beutetasche
     "broll_cctv_05.mp4",   # Flucht-Roller
     "broll_cctv_06.mp4",   # Fluchtwagen
-    "broll_cctv_07.mp4",   # leere Strasse (ungeloest)
 ]
 
 # Die uebrigen Kategorien stehen weiter auf 1 — dort liegt je ein Clip.
