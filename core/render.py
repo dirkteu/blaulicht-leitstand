@@ -257,6 +257,16 @@ def _draw_schlagzeile(d: ImageDraw.ImageDraw, text: str) -> None:
     t = (text or "").strip()
     if not t:
         return
+
+    # NOTAUSGANG: Diese Funktion braucht eine echte TrueType-Schrift — sie ruft
+    # getmetrics() und zeichnet mit anchor=. Faellt `_font()` bis auf
+    # ImageFont.load_default() durch (Bitmap-Schrift, je nach Pillow-Version),
+    # kann sie beides nicht und wuerfe eine Ausnahme mitten im Render.
+    # Eine fehlende Schlagzeile ist verschmerzbar, ein abgebrochener Render
+    # nicht: Der Fall faellt sonst nach `review` zurueck (workers/render.py).
+    if not hasattr(_KOPF_FONTS[KOPF_GROESSEN[0]], "getmetrics"):
+        return
+
     maxw = W - 200
     fnt = _kopf_font(d, t, maxw)
     zeilen = _kopf_zeilen(d, t, fnt, maxw)[:KOPF_ZEILEN]
