@@ -10,6 +10,68 @@ Verbote, Abnahme, Übergabe an Seedance) steht im
 
 ---
 
+## Gültige Fassung — „EINSATZFAHRT", 08.08.2026
+
+Die Panel-Liste nach dem [Leitfaden](STORYBOARD_LEITFADEN.md). Sie löst das
+Blatt vom 06.08. (`ffacbb77…`) ab und beseitigt dessen drei Befunde: keine
+Schrift im Funkdisplay, kein erkennbares Profil, keine absaufende
+Vogelperspektive. Referenz: Fahrzeug-Sheet `4ff8bf51-eb8d-489d-9de1-01b5d45c69a3`.
+
+| # | Position | Einstellung | Motiv | Umfeld |
+|---|---|---|---|---|
+| 1 | r1 c1 | WIDE SHOT | Wagen fährt rechts ins leere nasse Bild | Reihe parkender Autos |
+| 2 | r1 c2 | LOW ANGLE | Frontal von Straßenhöhe, Scheinwerfer blenden | leere Parkbucht, kahler Baum |
+| 3 | r1 c3 | MACRO | Dachbalken allein, Regentropfen | Hecke unscharf dahinter |
+| 4 | r1 c4 | INTERIOR | Von der Rückbank, zwei Beamte von hinten | Armaturen und Funk **verpixelt** |
+| 5 | r1 c5 | CLOSE-UP | Hände am Lenkrad, Daumen tippt | Kombiinstrument verpixelt |
+| 6 | r2 c1 | MEDIUM SHOT | Beifahrer abgewandt im Schatten am Funk | Blaulicht über der Schulter |
+| 7 | r2 c2 | POV | Von Motorhaubenhöhe, Mittellinien rauschen | Schienen, geschlossene Rollläden |
+| 8 | r2 c3 | TRACKING | Seitlich mitfahrend, „POLIZEI" scharf | Altbauzeile in Bewegungsunschärfe |
+| 9 | r2 c4 | LOW ANGLE | Vorderrad durch die Pfütze, Gischt blau | Mülltonnen, Fahrradbügel |
+| 10 | r2 c5 | WIDE SHOT | Wagen quert leere Kreuzung | Haltestelle, dunkles Ladenlokal |
+| 11 | r3 c1 | AERIAL | Ein blauer Punkt im Straßenraster | **Laternen klar sichtbar, kein schwarzes Feld** |
+| 12 | r3 c2 | DETAIL | Regen auf der Seitenscheibe, Blau gleitet | Hecke, Vorgarten ziehen vorbei |
+| 13 | r3 c3 | WIDE SHOT | Wagen bremst am Bordstein | Baustellenbake, Nachkriegsblock |
+| 14 | r3 c4 | MEDIUM SHOT | Beide Türen auf, **Fahrer links, Beifahrer rechts** | leere Parkbucht davor |
+| 15 | r3 c5 | WIDE SHOT | Beamte laufen aus dem Bild, Wagen blinkt weiter | Fahrradbügel, Hecke |
+
+NOTES-Kasten, wörtlich: „Continuous urgent drive, one vehicle throughout." /
+„Night, rain, wet asphalt, blue light." / „No music, no titles."
+
+<details>
+<summary>Panel-Block, englisch, wörtlich ans Modell</summary>
+
+```
+Panel 1 (row 1, column 1) — WIDE SHOT: an empty wet main road at night, the patrol car entering from the right in the middle distance, a long row of parked German cars along the kerb, camera static thirty centimetres above the asphalt. Caption: "WIDE SHOT" / "Empty wet main road at night, the patrol car enters from the right." / "00:00 - 00:01".
+Panel 2 (row 1, column 2) — LOW ANGLE: the car head-on from street level, headlights flaring into the lens, an empty parking bay and a bare tree in the foreground, camera static at kerb height. Caption: "LOW ANGLE" / "Head-on from street level, headlights flaring, light bar pulsing." / "00:01 - 00:02".
+Panel 3 (row 1, column 3) — MACRO: the roof light bar alone, rain droplets beaded on the housing, dark hedge out of focus behind it, camera pushes in slowly. Caption: "MACRO" / "The roof light bar alone, rain droplets on the housing." / "00:02 - 00:03".
+Panel 4 (row 1, column 4) — INTERIOR: seen from the rear bench between the two front head restraints, two officers in dark blue from behind, only the backs of their heads and shoulders, rain running down the windscreen, the dashboard and radio screens covered by a visible pixel mosaic, camera static. Caption: "INTERIOR" / "From the rear bench between the head restraints, two officers from behind." / "00:03 - 00:04".
+Panel 5 (row 1, column 5) — CLOSE-UP: both hands on the steering wheel, one thumb tapping, the instrument cluster behind the wheel pixelated, wet windscreen glow beyond, camera static. Caption: "CLOSE-UP" / "Hands on the steering wheel, thumb tapping." / "00:04 - 00:05".
+Panel 6 (row 2, column 1) — MEDIUM SHOT: the front passenger seen from behind and slightly to the side, face turned away and in shadow, lifting a radio handset, alternating blue flashes across the shoulder, camera static. Caption: "MEDIUM SHOT" / "Passenger turned away in shadow, lifting the radio handset." / "00:05 - 00:06".
+Panel 7 (row 2, column 2) — POV: forward from bonnet height along a wet street, white centre lines rushing under the car, tram tracks glinting, closed roller shutters on both sides, camera moves forward fast. Caption: "POV" / "Forward from bonnet height, centre lines rushing under the car." / "00:06 - 00:07".
+Panel 8 (row 2, column 3) — TRACKING: side view of the car in motion, camera travelling alongside at the same speed, the "POLIZEI" lettering on the door sharp, a row of 19th century apartment houses stretched into motion blur behind it. Caption: "TRACKING" / "Side view in motion, facades stretched into blur." / "00:07 - 00:08".
+Panel 9 (row 2, column 4) — LOW ANGLE: the front wheel cutting through a puddle at the kerb, spray lit blue, two wheelie bins and a bicycle stand at the edge of the frame, camera static and very low. Caption: "LOW ANGLE" / "Front wheel cutting through a puddle, spray lit blue." / "00:08 - 00:09".
+Panel 10 (row 2, column 5) — WIDE SHOT: the car sweeping through an empty crossing, a bus stop shelter on the right, an unlit closed shop front behind it, blue light mirrored in the wet asphalt, camera pans with the car. Caption: "WIDE SHOT" / "The car sweeps through an empty crossing, lights mirrored in the wet." / "00:09 - 00:10".
+Panel 11 (row 3, column 1) — AERIAL: a high view looking steeply down on a grid of German streets and rooftops at night, the car a single travelling point of blue light, the street lamps clearly lit and the wet roads and roof lines plainly readable, never a black plate, camera static. Caption: "AERIAL" / "Far above, a single blue point travelling the lit street grid." / "00:10 - 00:11".
+Panel 12 (row 3, column 2) — DETAIL: the rain-beaded side window from outside, blue light sliding across the glass, a hedge and a small front garden slipping past behind, camera pans right. Caption: "DETAIL" / "Rain on the side window, blue light sliding across the glass." / "00:11 - 00:12".
+Panel 13 (row 3, column 3) — WIDE SHOT: the car braking at the kerb of a dark residential street, tail lights glowing, a road works barrier and a plain post-war apartment block beside it, camera static from behind. Caption: "WIDE SHOT" / "The car brakes at the kerb, tail lights glowing." / "00:12 - 00:13".
+Panel 14 (row 3, column 4) — MEDIUM SHOT: both front doors open on opposite sides of the car, the driver stepping out on the left and the passenger on the right, two dark silhouettes with their backs to the camera, an empty parking bay in front of them, camera static. Caption: "MEDIUM SHOT" / "Both doors open, two silhouettes stepping out on opposite sides." / "00:13 - 00:14".
+Panel 15 (row 3, column 5) — WIDE SHOT: the two officers walking out of the frame from behind, the empty car left at the kerb with its light bar still flashing, bicycle stands and a hedge along the pavement, camera static. Caption: "WIDE SHOT" / "The officers walk out of frame, the empty car keeps flashing." / "00:14 - 00:15".
+```
+
+Davor der Blatt-Block und die Referenzbindung, danach Look NACHT, Umfeld-Block
+mit `AT NIGHT`, Textregel **mit** POLIZEI-Ausnahme und Personenregel — alle
+wörtlich aus dem Leitfaden §3, §4, §2, §5.1, §5.3.
+
+</details>
+
+**Blatt vom — noch nicht gezogen.** Der Prompt liegt fertig vor, der Lauf steht
+aus (User lädt selbst hoch). Beim Sichten zuerst Panel 4, 5 und 11 prüfen — das
+sind die drei Stellen, an denen das Vorgängerblatt gescheitert ist. Danach
+Protokolleintrag nach Leitfaden §7 hier ergänzen.
+
+---
+
 ## Was im Video steht — und was es hier ändert
 
 **„I gave Seedance 2.0 my entire storyboard. Here's what happened."** (Edit
