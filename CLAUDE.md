@@ -62,9 +62,57 @@ und schreibt dort **nie** hinein. (2026-07-25 wurden so schon einmal 12 echte
 Higgsfield-Clips vernichtet.)
 
 ### 6. Ton
-Sachlich-dokumentarisch, nie reißerisch. Nicht nur juristisch — YouTube geht
-gegen „massenproduzierte, repetitive" KI-Inhalte vor. Der Disclaimer in
-`script.DISCLAIMER` läuft automatisch an jede Caption.
+Sachlich-dokumentarisch, nie reißerisch. Der Disclaimer in `script.DISCLAIMER`
+läuft automatisch an jede Caption.
+
+### 6a. Authentizität — die Plattformregel, die dieses Projekt am härtesten trifft
+YouTube hat die alte „repetitious content"-Regel am **15.07.2025** in
+**„inauthentic content"** umbenannt und am **16.07.2026** präzisiert. Drei
+Kategorien: generisch-repetitive Inhalte mit minimalem kreativem Aufwand (KI,
+CGI **oder Vorlagen**), verstörend-manipulative Inhalte, und KI-Personas zu
+Gesundheit, Finanzen und Recht. Folge ist der YPP-Ausschluss, gestaffelt
+Verwarnung → 90 Tage → dauerhaft.
+
+**KI ist nicht verboten.** Der Regeltext nennt ausdrücklich als Rettung:
+„Originalinhalte, authentische Erkenntnisse oder Perspektiven der Creatorin
+oder des Creators". Das Kriterium ist Mehrwert, nicht Werkzeug.
+
+**Warum uns das besonders trifft:** Vier fester Blöcke, ein gemeinsamer
+B-Roll-Topf, eine Stimme, ein automatischer Disclaimer — „made with a template
+with little to no variation across videos" beschreibt exakt unseren Aufbau.
+Ein Format zu haben ist erlaubt (Nachrichtenformate sind auch Vorlagen).
+Ausgeschlossen wird die **Kombination** aus Vorlage, fehlendem eigenem Beitrag
+und Menge. An der Vorlage hängt unsere Wiedererkennung — also müssen die beiden
+anderen Hebel gezogen werden.
+
+Fünf harte Punkte:
+
+1. **Jedes Video braucht mindestens einen Satz, der nicht in der Meldung
+   steht.** Einordnung, Vergleichszahl, Fahndungsstand im Kontext — mit
+   genannter Quelle. Das ist wörtlich das Kriterium, an dem die Regel die
+   Grenze zieht. Platz ist da: c4 steht aktuell als fast leere Fläche.
+2. **Oberfläche variieren, Struktur behalten.** Einstiegssatz, Länge, Stimme
+   und Bildquelle dürfen wechseln. Die Blockfolge bleibt.
+3. **Echtes Bildmaterial hat Vorrang vor generiertem.** Der Umfärb-Weg startet
+   aus echten Fotos und ist damit unser stärkstes Unterscheidungsmerkmal
+   gegenüber reinen Prompt-Kanälen (BROLL_PLAN, Betriebsart „Standard").
+4. **Synthetische Szenen werden beim Upload offengelegt.** Fotorealistisch
+   generierte Bilder zu einem realen Ereignis sind der ausdrückliche Auslöser
+   („eine realistische Szene, die nie stattgefunden hat"). Das Häkchen in
+   YouTube Studio bzw. der AIGC-Schalter bei TikTok ist **Pflicht** und wird
+   durch `script.DISCLAIMER` in der Caption **nicht** ersetzt. Die Offenlegung
+   allein kostet weder Reichweite noch Monetarisierung.
+5. **Umsortiertes Material ist kein neues Video.** Gewürfelte Varianten aus
+   einem Lauf (`tools/wuerfeln.py`) sind Vorrat für den Topf, aus dem pro Video
+   *eine* Einstellung gezogen wird — nie mehrere Uploads aus demselben Lauf.
+
+> **Offen:** Kategorie 3 nennt Gesundheit, Finanzen und Recht.
+> Kriminalitätsberichterstattung steht nicht auf der Liste, liegt aber in der
+> Nachbarschaft. Eine synthetische Stimme, die Polizeimeldungen vorträgt, ist
+> im Blick zu behalten.
+
+Belege: [YouTube-Hilfe, Monetarisierungsrichtlinien](https://support.google.com/youtube/answer/1311392?hl=de) ·
+[TechCrunch, 20.07.2026](https://techcrunch.com/2026/07/20/youtube-clarifies-policies-around-ai-slop-and-upsetting-videos/)
 
 ### 7. Ship-Gate (Kurskorrektur 01.08.2026)
 **Keine neue Produktionsqualitäts-Baustelle, solange die laufende Woche ihre
@@ -178,5 +226,6 @@ factory defaults" klicken — das löscht alle lokalen Images und Container.
 
 - [`BETRIEB.md`](BETRIEB.md) — Änderungshistorie mit Begründungen, Diagnose-Schnipsel
 - [`BROLL_PLAN.md`](BROLL_PLAN.md) — geltende B-Roll-Beschlüsse (Nummern sind Anker im Code)
+- [`STORYBOARD_LEITFADEN.md`](STORYBOARD_LEITFADEN.md) — Storyboard-Blätter mit gpt_image_2: Basis-Look, Beschriftung, Verbote, Abnahme
 - [`PROJEKTBUCH_BROLL.md`](PROJEKTBUCH_BROLL.md) — B-Roll-Lehren: was schiefging und warum
 - [`UMSETZUNG.md`](UMSETZUNG.md) · [`README.md`](README.md) — Aufbau und Struktur
